@@ -1,14 +1,14 @@
 // screens/onboarding/04-ReviewScheduleScreen.js
 
 import React from "react";
-import { SafeAreaView, ScrollView, View, Text, StyleSheet } from "react-native";
+import { SafeAreaView, ScrollView, View, Text, StyleSheet, Platform, ToastAndroid, Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import AppButton from "../../components/AppButton";
 import useTheme from "../../hooks/useTheme";
 import { useSchedules } from "../../context/AppContext";
 
 export default function ReviewScheduleScreen({ route }) {
-  const { name, selectedDays, hasZero, periods, hasBreak, breakStartTime, breakEndTime, hasLunch, lunchStartTime, lunchEndTime } = route.params;
+  const { name, selectedDays, hasZero, count, periods, hasBreak, breakStartTime, breakEndTime, hasLunch, lunchStartTime, lunchEndTime } = route.params;
   const navigation = useNavigation();
   const theme = useTheme();
   const { addSchedule } = useSchedules();
@@ -30,10 +30,18 @@ export default function ReviewScheduleScreen({ route }) {
 
     addSchedule(scheduleData);
 
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "Home" }],
-    });
+    if (Platform.OS === 'android') {
+      ToastAndroid.show('Schedule Created!', ToastAndroid.SHORT);
+    } else {
+      Alert.alert('Success', 'Schedule Created!');
+    }
+
+    setTimeout(() => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Home" }],
+      });
+    }, 500); // slight delay before navigating
   };
 
   return (
@@ -66,19 +74,27 @@ export default function ReviewScheduleScreen({ route }) {
           {/* Periods */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Periods</Text>
-            {periods.map((p, idx) => (
-              <View key={idx} style={styles.periodRow}>
-                <View style={styles.periodHeader}>
-                  <Text style={[styles.periodLabel, { color: theme.colors.text }]}>{p.label}</Text>
-                  <Text style={[styles.periodTime, { color: theme.colors.text }]}>
-                    {p.startTime} - {p.endTime}
-                  </Text>
+            {periods.map((p, idx) => {
+              const safeLabel = p.label.trim().length > 0
+                ? p.label
+                : hasZero && idx === 0
+                ? "Zero Period"
+                : `Period ${hasZero ? idx : idx + 1}`;
+
+              return (
+                <View key={idx} style={styles.periodRow}>
+                  <View style={styles.periodHeader}>
+                    <Text style={[styles.periodLabel, { color: theme.colors.text }]}>{safeLabel}</Text>
+                    <Text style={[styles.periodTime, { color: theme.colors.text }]}>
+                      {p.startTime} - {p.endTime}
+                    </Text>
+                  </View>
+                  {idx !== periods.length - 1 && (
+                    <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+                  )}
                 </View>
-                {idx !== periods.length - 1 && (
-                  <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-                )}
-              </View>
-            ))}
+              );
+            })}
           </View>
 
           {/* Extras */}
@@ -137,7 +153,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    padding: 28, // Slightly larger for breathing room
+    padding: 28,
     borderRadius: 16,
     marginBottom: 24,
     elevation: 3,
@@ -202,3 +218,5 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
 });
+// This screen allows users to review their schedule before saving it. It displays the schedule name, selected days, periods, and any extra times (break/lunch). The user can save the schedule, which will be added to the context and reset the navigation stack to the home screen.
+// The screen uses a card layout for better visual separation and includes a button to save the schedule. The styles are responsive to the theme colors for better integration with the app's design.

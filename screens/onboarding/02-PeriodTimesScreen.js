@@ -1,7 +1,7 @@
 // screens/onboarding/02-PeriodTimesScreen.js
 
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { SafeAreaView, ScrollView, View, Text, StyleSheet, Pressable, TextInput, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AppButton from '../../components/AppButton';
 import useTheme from '../../hooks/useTheme';
@@ -16,7 +16,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
 
   const [periods, setPeriods] = useState(() =>
     Array.from({ length: total }, (_, i) => ({
-      label: hasZero ? (i === 0 ? 'Zero' : `Period ${i}`) : `Period ${i + 1}`,
+      label: hasZero ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`,
       startTime: new Date(),
       endTime: new Date(),
     }))
@@ -49,7 +49,13 @@ export default function PeriodTimesScreen({ navigation, route }) {
     });
   };
 
-  const allFilled = periods.every(p => p.startTime && p.endTime);
+  const handleLabelChange = (idx, text) => {
+    const updated = [...periods];
+    updated[idx].label = text;
+    setPeriods(updated);
+  };
+
+  const allFilled = periods.every(p => p.startTime && p.endTime && p.label.trim().length > 0);
 
   const handleNext = () => {
     const finalPeriods = periods.map(p => ({
@@ -72,7 +78,17 @@ export default function PeriodTimesScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {periods.map((p, idx) => (
           <View key={idx} style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.periodLabel, { color: colors.text }]}>{p.label}</Text>
+            <Text style={[styles.periodLabel, { color: colors.text }]}>
+              {hasZero && idx === 0 ? "Zero Period" : `Period ${hasZero ? idx : idx + 1}`}
+            </Text>
+
+            <TextInput
+              value={p.label}
+              onChangeText={text => handleLabelChange(idx, text)}
+              placeholder="Enter Class Name"
+              style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+              placeholderTextColor={colors.border}
+            />
 
             <View style={styles.timeRow}>
               <Pressable
@@ -138,9 +154,17 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   periodLabel: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    fontSize: 16,
     marginBottom: 16,
   },
   timeRow: {
@@ -156,7 +180,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   timeButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
 });
