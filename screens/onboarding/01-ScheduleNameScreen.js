@@ -1,130 +1,149 @@
 // screens/onboarding/01-ScheduleNameScreen.js
 
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView, ScrollView, View, Text, TextInput, StyleSheet } from 'react-native';
 import Checkbox from 'expo-checkbox';
-import { useNavigation } from '@react-navigation/native';
-
-import CenteredView from '../../components/CenteredView';
 import AppButton from '../../components/AppButton';
+import useTheme from '../../hooks/useTheme';
 
-export default function ScheduleNameScreen() {
-  const navigation = useNavigation();
+const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+export default function ScheduleNameScreen({ navigation }) {
+  const theme = useTheme();
   const [scheduleName, setScheduleName] = useState('');
   const [selectedDays, setSelectedDays] = useState([]);
   const [hasZeroPeriod, setHasZeroPeriod] = useState(false);
-  const [periodCount, setPeriodCount] = useState(null);
+  const [numberOfPeriods, setNumberOfPeriods] = useState('');
 
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  function toggleDay(day) {
+  const toggleDay = (day) => {
     setSelectedDays(prev =>
-      prev.includes(day)
-        ? prev.filter(d => d !== day)
-        : [...prev, day]
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
     );
-  }
+  };
 
-  function handleNext() {
+  const handleNext = () => {
     navigation.navigate('PeriodTimes', {
-      name: scheduleName,
+      name: scheduleName.trim() || 'Regular',
       selectedDays,
       hasZero: hasZeroPeriod,
-      count: periodCount,
+      count: numberOfPeriods,
     });
-  }
+  };
+
+  const isFormValid = selectedDays.length > 0 && numberOfPeriods !== '';
 
   return (
-    <CenteredView>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContainer} 
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <ScrollView
+        contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Schedule Name */}
-        <Text style={styles.label}>Schedule Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Regular Schedule"
-          value={scheduleName}
-          onChangeText={setScheduleName}
-        />
-
-        {/* Days */}
-        <Text style={styles.label}>Days This Schedule Applies:</Text>
-        <View style={styles.daysGrid}>
-          {daysOfWeek.map((day, idx) => (
-            <View key={idx} style={styles.dayRow}>
-              <Checkbox
-                value={selectedDays.includes(day)}
-                onValueChange={() => toggleDay(day)}
-              />
-              <Text style={styles.dayLabel}>{day}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Zero Period Toggle */}
-        <View style={styles.row}>
-          <Text style={styles.label}>Include Zero Period?</Text>
-          <Checkbox
-            value={hasZeroPeriod}
-            onValueChange={setHasZeroPeriod}
+        {/* Schedule Name Card */}
+        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Schedule Name</Text>
+          <TextInput
+            style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text }]}
+            placeholder="e.g. Regular Schedule"
+            placeholderTextColor={theme.colors.border}
+            value={scheduleName}
+            onChangeText={setScheduleName}
           />
         </View>
 
-        {/* Period Count */}
-        <Text style={styles.label}>Number of Periods:</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter number of periods"
-          keyboardType="number-pad"
-          value={periodCount ? periodCount.toString() : ''}
-          onChangeText={text => setPeriodCount(parseInt(text) || null)}
-        />
+        {/* Days Card */}
+        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Days This Schedule Applies:</Text>
+          <View style={styles.daysGrid}>
+            {daysOfWeek.map((day) => (
+              <View key={day} style={styles.dayItem}>
+                <Checkbox
+                  value={selectedDays.includes(day)}
+                  onValueChange={() => toggleDay(day)}
+                  color={selectedDays.includes(day) ? theme.colors.primary : undefined}
+                />
+                <Text style={[styles.dayLabel, { color: theme.colors.text }]}>{day}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Zero Period and Number of Periods Card */}
+        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Include Zero Period?</Text>
+            <Checkbox
+              value={hasZeroPeriod}
+              onValueChange={setHasZeroPeriod}
+              color={hasZeroPeriod ? theme.colors.primary : undefined}
+            />
+          </View>
+
+          <Text style={[styles.label, { color: theme.colors.text, marginTop: 16 }]}>Number of Periods:</Text>
+          <TextInput
+            style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text }]}
+            placeholder="Enter number of periods"
+            placeholderTextColor={theme.colors.border}
+            keyboardType="numeric"
+            value={numberOfPeriods}
+            onChangeText={setNumberOfPeriods}
+          />
+        </View>
 
         {/* Next Button */}
         <AppButton
           title="Next"
           onPress={handleNext}
-          disabled={!scheduleName || selectedDays.length === 0 || !periodCount}
-          style={{ marginTop: 24 }}
+          disabled={!isFormValid}
+          style={{ marginTop: 32 }}
         />
       </ScrollView>
-    </CenteredView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+  container: {
+    marginTop: 36,
+    padding: 24,
+    alignItems: 'stretch',
   },
   label: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 8,
   },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
   input: {
-    width: '100%',
-    padding: 12,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    marginBottom: 16,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+  },
+  card: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
   },
   daysGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    marginTop: 12,
   },
-  dayRow: {
+  dayItem: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '30%',
-    marginVertical: 4,
+    marginBottom: 12,
   },
   dayLabel: {
     marginLeft: 8,
@@ -132,9 +151,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
-    width: '100%',
+    alignItems: 'center',
   },
 });
