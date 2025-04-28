@@ -1,6 +1,6 @@
 // screens/SettingsScreen.js
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -10,9 +10,9 @@ import {
   Switch,
   Alert,
   Pressable,
+  Platform,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSettings } from "../context/AppContext";
+import { useSettings, useSchedules } from "../context/AppContext";
 import { useNavigation, CommonActions } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import AppButton from "../components/AppButton";
@@ -20,57 +20,38 @@ import useTheme from "../hooks/useTheme";
 
 export default function SettingsScreen() {
   const { isDarkMode, setIsDarkMode, is24HourTime, setIs24HourTime } = useSettings();
+  const { schedules, activeScheduleId, deleteSchedule, setActiveScheduleId } = useSchedules();
   const navigation = useNavigation();
-  const theme = useTheme(); // ✅ fixed here
+  const theme = useTheme();
 
-  const [scheduleName, setScheduleName] = useState(null);
-
-  useEffect(() => {
-    AsyncStorage.getItem("@schedule")
-      .then((json) => {
-        if (json) {
-          const data = JSON.parse(json);
-          setScheduleName(data.name || "Unnamed Schedule");
-        } else {
-          setScheduleName(null);
-        }
-      })
-      .catch(console.error);
-  }, []);
+  const activeSchedule = schedules.find(s => s.id === activeScheduleId);
 
   const handleDelete = () => {
+    if (!activeSchedule) return;
+
     Alert.alert(
       "Delete Schedule",
-      "Are you sure you want to delete your schedule?",
+      `Delete "${activeSchedule.name}"?`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
-          onPress: async () => {
-            await AsyncStorage.removeItem("@schedule");
-            setScheduleName(null);
+          onPress: () => {
+            deleteSchedule(activeSchedule.id);
+            setActiveScheduleId(null);
           },
         },
       ]
     );
   };
 
-  const handleAddNew = async () => {
-    await AsyncStorage.removeItem("@schedule");
-    await AsyncStorage.removeItem("@hasOnboarded");
+  const handleAddNew = () => {
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
         routes: [{ name: "ScheduleName" }],
       })
-    );
-  };
-
-  const handleEdit = () => {
-    Alert.alert(
-      "Edit Schedule",
-      "Editing schedules will be available in a future update."
     );
   };
 
@@ -80,12 +61,20 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      {/* Back Button */}
+      <Pressable
+        onPress={() => navigation.goBack()}
+        style={styles.backButton}
+      >
+        <Ionicons name="arrow-back-outline" size={28} color={theme.colors.text} />
+      </Pressable>
+
       <ScrollView
         contentContainerStyle={[styles.container, { paddingTop: 64 }]}
         keyboardShouldPersistTaps="handled"
       >
         {/* Schedule Section */}
-        {!scheduleName ? (
+        {!activeSchedule ? (
           <AppButton
             title="Add New Schedule"
             onPress={handleAddNew}
@@ -94,20 +83,20 @@ export default function SettingsScreen() {
         ) : (
           <View style={[styles.scheduleCard, { backgroundColor: theme.colors.card }]}>
             <Text style={[styles.scheduleText, { color: theme.colors.text }]}>
-              Schedule: {scheduleName}
+              Schedule: {activeSchedule.name}
             </Text>
             <View style={styles.buttonsRow}>
               <Pressable
-                onPress={handleEdit}
+                onPress={() => Alert.alert("Coming Soon", "Edit functionality will be added in a future update.")}
                 style={[styles.iconButton, { backgroundColor: theme.colors.primary }]}
               >
                 <Ionicons name="pencil" size={20} color={theme.colors.background} />
               </Pressable>
               <Pressable
                 onPress={handleDelete}
-                style={[styles.iconButton, { backgroundColor: theme.colors.border }]}
+                style={[styles.iconButton, { backgroundColor: theme.colors.secondary }]}
               >
-                <Ionicons name="trash" size={20} color={theme.colors.text} />
+                <Ionicons name="trash" size={20} color={theme.colors.background} />
               </Pressable>
             </View>
           </View>
@@ -119,8 +108,12 @@ export default function SettingsScreen() {
           <Switch
             value={is24HourTime}
             onValueChange={setIs24HourTime}
-            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-            thumbColor={is24HourTime ? theme.colors.background : theme.colors.card}
+            trackColor={{
+              false: isDarkMode ? '#555' : theme.colors.border,
+              true: theme.colors.primary,
+            }}
+            thumbColor={isDarkMode ? '#FFF' : (is24HourTime ? theme.colors.background : theme.colors.card)}
+            ios_backgroundColor={isDarkMode ? "#555" : theme.colors.border} // 🔥 for iOS smooth fallback
           />
         </View>
 
@@ -129,16 +122,21 @@ export default function SettingsScreen() {
           <Switch
             value={isDarkMode}
             onValueChange={setIsDarkMode}
-            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-            thumbColor={isDarkMode ? theme.colors.background : theme.colors.card}
+            trackColor={{
+              false: isDarkMode ? '#555' : theme.colors.border,
+              true: theme.colors.primary,
+            }}
+            thumbColor={isDarkMode ? '#FFF' : (isDarkMode ? theme.colors.background : theme.colors.card)}
+            ios_backgroundColor={isDarkMode ? "#555" : theme.colors.border}
           />
         </View>
 
-        {/* Upgrade to Pro */}
+        {/* Upgrade to Pro Button */}
         <AppButton
           title="Upgrade to Pro"
           onPress={handleUpgrade}
-          style={styles.buttonMargin}
+          style={[styles.buttonMargin, { marginBottom: 32 }]}
+          textColor={theme.colors.text}
         />
       </ScrollView>
     </SafeAreaView>
@@ -149,6 +147,13 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 24,
     alignItems: "stretch",
+  },
+  backButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    zIndex: 10,
+    padding: 8,
   },
   scheduleCard: {
     width: "100%",

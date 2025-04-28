@@ -4,7 +4,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
 import useTheme from '../hooks/useTheme';
 
-export default function AppButton({ title, onPress, disabled, style }) {
+export default function AppButton({ title, onPress, disabled, style, textColor }) {
   const theme = useTheme();
 
   return (
@@ -13,11 +13,16 @@ export default function AppButton({ title, onPress, disabled, style }) {
       disabled={disabled}
       style={[
         styles.button,
-        { backgroundColor: disabled ? '#999' : theme.primary },
+        { backgroundColor: disabled ? '#999' : theme.colors.primary },
         style,
       ]}
     >
-      <Text style={[styles.text, { color: theme.buttonText }]}>{title}</Text>
+      <Text style={[
+        styles.text,
+        { color: textColor || theme.colors.background } // 🔥 default white text on blue
+      ]}>
+        {title}
+      </Text>
     </TouchableOpacity>
   );
 }
