@@ -1,6 +1,6 @@
 // screens/SettingsScreen.js
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -10,43 +10,38 @@ import {
   Switch,
   Alert,
   Pressable,
-  Platform,
 } from "react-native";
-import { useSettings, useSchedules } from "../context/AppContext";
-import { useNavigation, CommonActions } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation, CommonActions } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSettings, useSchedules } from "../context/AppContext";
 import AppButton from "../components/AppButton";
 import useTheme from "../hooks/useTheme";
 
 export default function SettingsScreen() {
-  const { isDarkMode, setIsDarkMode, is24HourTime, setIs24HourTime } = useSettings();
-  const { schedules, activeScheduleId, deleteSchedule, setActiveScheduleId } = useSchedules();
   const navigation = useNavigation();
   const theme = useTheme();
 
-  const activeSchedule = schedules.find(s => s.id === activeScheduleId);
+  const { isDarkMode, setIsDarkMode, is24HourTime, setIs24HourTime } = useSettings();
+  const { schedules, activeScheduleId, deleteSchedule } = useSchedules();
+
+  const [activeScheduleName, setActiveScheduleName] = useState(null);
+
+  useEffect(() => {
+    const schedule = schedules.find(s => s.id === activeScheduleId);
+    setActiveScheduleName(schedule ? schedule.name : null);
+  }, [schedules, activeScheduleId]);
 
   const handleDelete = () => {
-    if (!activeSchedule) return;
-
-    Alert.alert(
-      "Delete Schedule",
-      `Delete "${activeSchedule.name}"?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            deleteSchedule(activeSchedule.id);
-            setActiveScheduleId(null);
-          },
-        },
-      ]
-    );
+    if (!activeScheduleId) return;
+    Alert.alert("Delete Schedule", "Are you sure you want to delete this schedule?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => deleteSchedule(activeScheduleId) },
+    ]);
   };
 
-  const handleAddNew = () => {
+  const handleAddNew = async () => {
+    await AsyncStorage.removeItem("@hasOnboarded");
     navigation.dispatch(
       CommonActions.reset({
         index: 0,
@@ -55,65 +50,51 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleEdit = () => {
+    Alert.alert("Coming Soon", "Editing schedules will be available in a future update.");
+  };
+
   const handleUpgrade = () => {
     Alert.alert("Coming Soon", "Pro features coming soon!");
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      {/* Back Button */}
-      <Pressable
-        onPress={() => navigation.goBack()}
-        style={styles.backButton}
-      >
-        <Ionicons name="arrow-back-outline" size={28} color={theme.colors.text} />
-      </Pressable>
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        {/* Header Row */}
+        <View style={styles.headerRow}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color={theme.colors.text} />
+          </Pressable>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Settings</Text>
+          <View style={{ width: 36 }} />
+        </View>
 
-      <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: 64 }]}
-        keyboardShouldPersistTaps="handled"
-      >
         {/* Schedule Section */}
-        {!activeSchedule ? (
-          <AppButton
-            title="Add New Schedule"
-            onPress={handleAddNew}
-            style={styles.buttonMargin}
-          />
+        {!activeScheduleName ? (
+          <AppButton title="Add New Schedule" onPress={handleAddNew} />
         ) : (
           <View style={[styles.scheduleCard, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.scheduleText, { color: theme.colors.text }]}>
-              Schedule: {activeSchedule.name}
-            </Text>
+            <Text style={[styles.scheduleText, { color: theme.colors.text }]}>Schedule: {activeScheduleName}</Text>
             <View style={styles.buttonsRow}>
-              <Pressable
-                onPress={() => Alert.alert("Coming Soon", "Edit functionality will be added in a future update.")}
-                style={[styles.iconButton, { backgroundColor: theme.colors.primary }]}
-              >
+              <Pressable onPress={handleEdit} style={[styles.iconButton, { backgroundColor: theme.colors.primary }]}>
                 <Ionicons name="pencil" size={20} color={theme.colors.background} />
               </Pressable>
-              <Pressable
-                onPress={handleDelete}
-                style={[styles.iconButton, { backgroundColor: theme.colors.secondary }]}
-              >
-                <Ionicons name="trash" size={20} color={theme.colors.background} />
+              <Pressable onPress={handleDelete} style={[styles.iconButton, { backgroundColor: theme.colors.border }]}>
+                <Ionicons name="trash" size={20} color={theme.colors.text} />
               </Pressable>
             </View>
           </View>
         )}
 
-        {/* Settings Toggles */}
+        {/* Toggles */}
         <View style={styles.settingRow}>
           <Text style={[styles.label, { color: theme.colors.text }]}>24-Hour Time</Text>
           <Switch
             value={is24HourTime}
             onValueChange={setIs24HourTime}
-            trackColor={{
-              false: isDarkMode ? '#555' : theme.colors.border,
-              true: theme.colors.primary,
-            }}
-            thumbColor={isDarkMode ? '#FFF' : (is24HourTime ? theme.colors.background : theme.colors.card)}
-            ios_backgroundColor={isDarkMode ? "#555" : theme.colors.border} // 🔥 for iOS smooth fallback
+            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            thumbColor={theme.colors.thumb}
           />
         </View>
 
@@ -122,22 +103,12 @@ export default function SettingsScreen() {
           <Switch
             value={isDarkMode}
             onValueChange={setIsDarkMode}
-            trackColor={{
-              false: isDarkMode ? '#555' : theme.colors.border,
-              true: theme.colors.primary,
-            }}
-            thumbColor={isDarkMode ? '#FFF' : (isDarkMode ? theme.colors.background : theme.colors.card)}
-            ios_backgroundColor={isDarkMode ? "#555" : theme.colors.border}
+            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            thumbColor={theme.colors.thumb}
           />
         </View>
 
-        {/* Upgrade to Pro Button */}
-        <AppButton
-          title="Upgrade to Pro"
-          onPress={handleUpgrade}
-          style={[styles.buttonMargin, { marginBottom: 32 }]}
-          textColor={theme.colors.text}
-        />
+        <AppButton title="Upgrade to Pro" onPress={handleUpgrade} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -145,15 +116,24 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: 36,
     paddingHorizontal: 24,
     alignItems: "stretch",
   },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    marginBottom: 24,
+  },
   backButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    zIndex: 10,
     padding: 8,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "700",
   },
   scheduleCard: {
     width: "100%",
@@ -191,8 +171,5 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 18,
-  },
-  buttonMargin: {
-    marginVertical: 16,
   },
 });
