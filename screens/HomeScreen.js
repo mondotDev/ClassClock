@@ -24,25 +24,28 @@ export default function HomeScreen() {
 
   // 🔥 Sync updates exactly every new minute
   useEffect(() => {
+    updateTime(); // 🔥 Immediate update when screen mounts
+  
     const now = new Date();
     const msUntilNextMinute = (60 - now.getSeconds()) * 1000;
-
+  
     const timeout = setTimeout(() => {
-      updateTime(); // first update at top of the next minute
+      updateTime(); // First synced update at top of next minute
       const interval = setInterval(updateTime, 60000);
       setUpdater(interval);
     }, msUntilNextMinute);
-
+  
     let updater;
     function setUpdater(interval) {
       updater = interval;
     }
-
+  
     return () => {
       clearTimeout(timeout);
       clearInterval(updater);
     };
   }, []);
+  
 
   const updateTime = () => {
     const now = new Date();
