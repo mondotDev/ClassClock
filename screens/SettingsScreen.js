@@ -32,6 +32,7 @@ export default function SettingsScreen() {
     setActiveScheduleName(schedule ? schedule.name : null);
   }, [schedules, activeScheduleId]);
 
+  // Handlers
   const handleDelete = () => {
     if (!activeScheduleId) return;
     Alert.alert("Delete Schedule", "Are you sure you want to delete this schedule?", [
@@ -61,6 +62,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        
         {/* Header Row */}
         <View style={styles.headerRow}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -75,12 +77,20 @@ export default function SettingsScreen() {
           <AppButton title="Add New Schedule" onPress={handleAddNew} />
         ) : (
           <View style={[styles.scheduleCard, { backgroundColor: theme.colors.card }]}>
-            <Text style={[styles.scheduleText, { color: theme.colors.text }]}>Schedule: {activeScheduleName}</Text>
+            <Text style={[styles.scheduleText, { color: theme.colors.text }]}>
+              Schedule: {activeScheduleName || "No Name"}
+            </Text>
             <View style={styles.buttonsRow}>
-              <Pressable onPress={handleEdit} style={[styles.iconButton, { backgroundColor: theme.colors.primary }]}>
+              <Pressable
+                onPress={handleEdit}
+                style={[styles.iconButton, { backgroundColor: theme.colors.primary }]}
+              >
                 <Ionicons name="pencil" size={20} color={theme.colors.background} />
               </Pressable>
-              <Pressable onPress={handleDelete} style={[styles.iconButton, { backgroundColor: theme.colors.border }]}>
+              <Pressable
+                onPress={handleDelete}
+                style={[styles.iconButton, { backgroundColor: theme.colors.border }]}
+              >
                 <Ionicons name="trash" size={20} color={theme.colors.text} />
               </Pressable>
             </View>
@@ -108,7 +118,9 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Upgrade Button */}
         <AppButton title="Upgrade to Pro" onPress={handleUpgrade} />
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -129,7 +141,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   backButton: {
-    padding: 8,
+    padding: 12, // slightly larger touch target
   },
   headerTitle: {
     fontSize: 22,
@@ -143,7 +155,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 24,
-    shadowColor: "#000",
+    shadowColor: "#000", // Light enough not to need change now
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
@@ -159,7 +171,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   iconButton: {
-    padding: 8,
+    padding: 10, // slightly larger
     borderRadius: 8,
     marginLeft: 8,
   },
