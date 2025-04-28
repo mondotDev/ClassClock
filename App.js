@@ -1,40 +1,52 @@
-// App.js
+import React, { useCallback, useEffect, useState } from "react";
+import { View } from "react-native";
+import { ActionSheetProvider } from "@expo/react-native-action-sheet";
+import * as SplashScreen from "expo-splash-screen";
+import * as Font from "expo-font";
 
-import React from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Roboto_400Regular, Roboto_700Bold } from '@expo-google-fonts/roboto';
-import AppLoading from 'expo-app-loading';
-import { StatusBar } from 'expo-status-bar';
+import { AppProvider } from "./context/AppContext";
+import MainNavigator from "./navigation/MainNavigator";
 
-import { AppProvider, useAppContext } from './context/AppContext';
-import MainNavigator from './navigation/MainNavigator';
-import { lightTheme, darkTheme } from './constants/theme';
+SplashScreen.preventAutoHideAsync(); // Tell Expo to keep splash visible
 
 export default function App() {
-  const [fontsLoaded] = useFonts({
-    Roboto_400Regular,
-    Roboto_700Bold,
-  });
+  const [appIsReady, setAppIsReady] = useState(false);
 
-  if (!fontsLoaded) {
-    return <AppLoading />;
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Pre-load fonts
+        await Font.loadAsync({
+          "Roboto-Regular": require("./assets/fonts/Roboto-Regular.ttf"),
+          "Roboto-Bold": require("./assets/fonts/Roboto-Bold.ttf"),
+        });
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setAppIsReady(true); // App is ready!
+      }
+    }
+
+    prepare();
+  }, []);
+
+  const onLayoutRootView = useCallback(async () => {
+    if (appIsReady) {
+      await SplashScreen.hideAsync(); // Hide splash after app is ready
+    }
+  }, [appIsReady]);
+
+  if (!appIsReady) {
+    return null; // While loading, show nothing (keeps splash up)
   }
 
   return (
-    <AppProvider>
-      <Root />
-    </AppProvider>
-  );
-}
-
-function Root() {
-  const { isDark } = useAppContext();
-
-  return (
-    <NavigationContainer theme={isDark ? DarkTheme : DefaultTheme}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <MainNavigator />
-    </NavigationContainer>
+    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+      <AppProvider>
+        <ActionSheetProvider>
+          <MainNavigator />
+        </ActionSheetProvider>
+      </AppProvider>
+    </View>
   );
 }
