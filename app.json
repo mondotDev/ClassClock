@@ -10,26 +10,36 @@
       "resizeMode": "contain",
       "backgroundColor": "#1B5C9E"
     },
+    "assetBundlePatterns": ["**/*"],
     "updates": {
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_LOAD" 
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.classcountdown.app" 
     },
     "android": {
+      "package": "com.classcountdown.app", 
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1B5C9E"
-      }
+      },
+      "permissions": [] 
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "experiments": {
+      "newArchEnabled": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id" 
+      }
+    }
   }
 }
