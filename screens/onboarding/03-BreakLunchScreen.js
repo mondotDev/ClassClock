@@ -5,6 +5,7 @@ import { SafeAreaView, ScrollView, View, Text, StyleSheet, TouchableOpacity } fr
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import Checkbox from 'expo-checkbox';
 import AppButton from '../../components/AppButton';
+import useTheme from '../../hooks/useTheme';
 
 const HOURS = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
 const MINUTES = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
@@ -12,7 +13,7 @@ const AMPM = ['AM', 'PM'];
 
 export default function BreakLunchScreen({ navigation, route }) {
   const { name, selectedDays, hasZero, count, periods } = route.params;
-
+  const { colors } = useTheme();
   const { showActionSheetWithOptions } = useActionSheet();
 
   const [hasBreak, setHasBreak] = useState(false);
@@ -23,9 +24,7 @@ export default function BreakLunchScreen({ navigation, route }) {
   const [lunchStart, setLunchStart] = useState({ hour: '12', minute: '00', ampm: 'PM' });
   const [lunchEnd, setLunchEnd] = useState({ hour: '12', minute: '30', ampm: 'PM' });
 
-  const allValid = (!hasBreak || (breakStart && breakEnd)) && (!hasLunch || (lunchStart && lunchEnd));
-
-  const openPicker = (setTimeObj, field, options) => {
+  const openPicker = (setter, field, options) => {
     showActionSheetWithOptions(
       {
         options: [...options, 'Cancel'],
@@ -33,11 +32,13 @@ export default function BreakLunchScreen({ navigation, route }) {
       },
       (selectedIndex) => {
         if (selectedIndex !== undefined && selectedIndex !== options.length) {
-          setTimeObj(prev => ({ ...prev, [field]: options[selectedIndex] }));
+          setter(prev => ({ ...prev, [field]: options[selectedIndex] }));
         }
       }
     );
   };
+
+  const allValid = (!hasBreak || (breakStart && breakEnd)) && (!hasLunch || (lunchStart && lunchEnd));
 
   const handleNext = () => {
     navigation.navigate('ReviewSchedule', {
@@ -56,26 +57,32 @@ export default function BreakLunchScreen({ navigation, route }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-
-        {/* Break Section */}
-        <View style={styles.card}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Break Card */}
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
           <View style={styles.row}>
-            <Text style={styles.label}>Include Break?</Text>
-            <Checkbox value={hasBreak} onValueChange={setHasBreak} />
+            <Text style={[styles.label, { color: colors.text }]}>Include Break?</Text>
+            <Checkbox
+              value={hasBreak}
+              onValueChange={setHasBreak}
+              color={hasBreak ? colors.primary : undefined}
+            />
           </View>
 
           {hasBreak && (
             <>
-              <Text style={styles.sectionLabel}>Break Start Time</Text>
+              <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>Break Start Time</Text>
               <View style={styles.timeRow}>
                 <TimeButton label={breakStart.hour} onPress={() => openPicker(setBreakStart, 'hour', HOURS)} />
                 <TimeButton label={breakStart.minute} onPress={() => openPicker(setBreakStart, 'minute', MINUTES)} />
                 <TimeButton label={breakStart.ampm} onPress={() => openPicker(setBreakStart, 'ampm', AMPM)} />
               </View>
 
-              <Text style={styles.sectionLabel}>Break End Time</Text>
+              <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>Break End Time</Text>
               <View style={styles.timeRow}>
                 <TimeButton label={breakEnd.hour} onPress={() => openPicker(setBreakEnd, 'hour', HOURS)} />
                 <TimeButton label={breakEnd.minute} onPress={() => openPicker(setBreakEnd, 'minute', MINUTES)} />
@@ -85,23 +92,27 @@ export default function BreakLunchScreen({ navigation, route }) {
           )}
         </View>
 
-        {/* Lunch Section */}
-        <View style={styles.card}>
+        {/* Lunch Card */}
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
           <View style={styles.row}>
-            <Text style={styles.label}>Include Lunch?</Text>
-            <Checkbox value={hasLunch} onValueChange={setHasLunch} />
+            <Text style={[styles.label, { color: colors.text }]}>Include Lunch?</Text>
+            <Checkbox
+              value={hasLunch}
+              onValueChange={setHasLunch}
+              color={hasLunch ? colors.primary : undefined}
+            />
           </View>
 
           {hasLunch && (
             <>
-              <Text style={styles.sectionLabel}>Lunch Start Time</Text>
+              <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>Lunch Start Time</Text>
               <View style={styles.timeRow}>
                 <TimeButton label={lunchStart.hour} onPress={() => openPicker(setLunchStart, 'hour', HOURS)} />
                 <TimeButton label={lunchStart.minute} onPress={() => openPicker(setLunchStart, 'minute', MINUTES)} />
                 <TimeButton label={lunchStart.ampm} onPress={() => openPicker(setLunchStart, 'ampm', AMPM)} />
               </View>
 
-              <Text style={styles.sectionLabel}>Lunch End Time</Text>
+              <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>Lunch End Time</Text>
               <View style={styles.timeRow}>
                 <TimeButton label={lunchEnd.hour} onPress={() => openPicker(setLunchEnd, 'hour', HOURS)} />
                 <TimeButton label={lunchEnd.minute} onPress={() => openPicker(setLunchEnd, 'minute', MINUTES)} />
@@ -111,6 +122,7 @@ export default function BreakLunchScreen({ navigation, route }) {
           )}
         </View>
 
+        {/* Next Button */}
         <AppButton
           title="Next"
           onPress={handleNext}
@@ -122,7 +134,6 @@ export default function BreakLunchScreen({ navigation, route }) {
   );
 }
 
-// Reusable button component
 function TimeButton({ label, onPress }) {
   return (
     <TouchableOpacity style={styles.timeButton} onPress={onPress}>
@@ -133,38 +144,33 @@ function TimeButton({ label, onPress }) {
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    marginTop: 36,
     padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'stretch',
   },
   card: {
-    width: '100%',
-    backgroundColor: '#f9f9f9',
-    padding: 16,
+    padding: 20,
     borderRadius: 12,
     marginBottom: 24,
+    elevation: 3,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
-    elevation: 3,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
   },
   label: {
     fontSize: 18,
     fontWeight: '600',
   },
-  sectionLabel: {
+  subLabel: {
     fontSize: 16,
-    fontWeight: '500',
-    marginTop: 12,
+    fontWeight: '600',
     marginBottom: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   timeRow: {
     flexDirection: 'row',
@@ -172,10 +178,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   timeButton: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     backgroundColor: '#e0e0e0',
-    borderRadius: 8,
+    borderRadius: 10,
+    minWidth: 60,
+    alignItems: 'center',
   },
   timeButtonText: {
     fontSize: 18,

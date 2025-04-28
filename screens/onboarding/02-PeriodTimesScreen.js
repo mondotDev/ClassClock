@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { SafeAreaView, ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import AppButton from '../../components/AppButton';
+import useTheme from '../../hooks/useTheme';
 
 const HOURS = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
 const MINUTES = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
@@ -14,6 +15,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
   const periodCount = Number(count);
   const total = periodCount + (hasZero ? 1 : 0);
 
+  const { colors } = useTheme();
   const { showActionSheetWithOptions } = useActionSheet();
 
   const [periods, setPeriods] = useState(() =>
@@ -69,23 +71,23 @@ export default function PeriodTimesScreen({ navigation, route }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
         {periods.map((p, idx) => (
-          <View key={idx} style={styles.periodCard}>
-            <Text style={styles.periodLabel}>{p.label}</Text>
+          <View key={idx} style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.periodLabel, { color: colors.text }]}>{p.label}</Text>
 
-            <Text style={styles.sectionLabel}>Start Time</Text>
+            <Text style={[styles.subLabel, { color: colors.text }]}>Start Time</Text>
             <View style={styles.timeRow}>
               <TimeButton label={p.startHour} onPress={() => openPicker(idx, 'startHour', HOURS)} />
               <TimeButton label={p.startMinute} onPress={() => openPicker(idx, 'startMinute', MINUTES)} />
               <TimeButton label={p.startAMPM} onPress={() => openPicker(idx, 'startAMPM', AMPM)} />
             </View>
 
-            <Text style={styles.sectionLabel}>End Time</Text>
+            <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>End Time</Text>
             <View style={styles.timeRow}>
               <TimeButton label={p.endHour} onPress={() => openPicker(idx, 'endHour', HOURS)} />
               <TimeButton label={p.endMinute} onPress={() => openPicker(idx, 'endMinute', MINUTES)} />
@@ -105,7 +107,6 @@ export default function PeriodTimesScreen({ navigation, route }) {
   );
 }
 
-// Reusable button component
 function TimeButton({ label, onPress }) {
   return (
     <TouchableOpacity style={styles.timeButton} onPress={onPress}>
@@ -116,34 +117,30 @@ function TimeButton({ label, onPress }) {
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
+    marginTop: 36,
     padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'stretch',
   },
-  periodCard: {
-    width: '100%',
-    backgroundColor: '#f9f9f9',
-    padding: 16,
+  card: {
+    padding: 20,
     borderRadius: 12,
     marginBottom: 24,
+    elevation: 3,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
-    elevation: 3,
   },
   periodLabel: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  sectionLabel: {
+  subLabel: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
-    marginTop: 12,
   },
   timeRow: {
     flexDirection: 'row',
@@ -151,10 +148,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   timeButton: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     backgroundColor: '#e0e0e0',
-    borderRadius: 8,
+    borderRadius: 10,
+    minWidth: 60,
+    alignItems: 'center',
   },
   timeButtonText: {
     fontSize: 18,
