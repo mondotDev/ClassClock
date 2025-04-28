@@ -1,7 +1,7 @@
 // screens/HomeScreen.js
 
 import React, { useEffect, useRef, useState } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { SafeAreaView, View, Text, StyleSheet, Pressable, Animated, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import CenteredView from '../components/CenteredView';
@@ -17,6 +17,8 @@ export default function HomeScreen() {
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const bounceAnimTime = useRef(new Animated.Value(1)).current;
+  const bounceAnimPeriod = useRef(new Animated.Value(1)).current;
 
   const [currentTime, setCurrentTime] = useState(new Date());
   const [currentBlock, setCurrentBlock] = useState(null);
@@ -103,7 +105,7 @@ export default function HomeScreen() {
       }
       if (i < allBlocks.length - 1) {
         const nextBlock = allBlocks[i + 1];
-        if (isAfter(now, block.end) && isBefore(now, nextBlock.start)) {
+        if (isAfter(now, block.end) && isBefore(nextBlock.start)) {
           setCurrentBlock('Passing Time');
           setMinutesLeft(differenceInMinutes(nextBlock.start, now));
           found = true;
@@ -123,25 +125,38 @@ export default function HomeScreen() {
     }
   };
 
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.9,
-      useNativeDriver: true,
-      speed: 50,
-      bounciness: 10,
-    }).start();
+  const formattedTime = is24HourTime
+    ? format(currentTime, 'HH:mm')
+    : format(currentTime, 'h:mm a');
+
+  const formattedDate = format(currentTime, 'EEEE, MMMM d'); // Monday, April 29
+
+  const handlePressTimeCard = () => {
+    Animated.sequence([
+      Animated.spring(bounceAnimTime, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }),
+      Animated.spring(bounceAnimTime, {
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      speed: 20,
-      bounciness: 8,
-    }).start();
+  const handlePressPeriodCard = () => {
+    Animated.sequence([
+      Animated.spring(bounceAnimPeriod, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }),
+      Animated.spring(bounceAnimPeriod, {
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
-  // Trigger pulse when minutesLeft changes
   useEffect(() => {
     if (minutesLeft !== null) {
       Animated.sequence([
@@ -151,19 +166,16 @@ export default function HomeScreen() {
     }
   }, [minutesLeft]);
 
-  const formattedTime = is24HourTime
-    ? format(currentTime, 'HH:mm')
-    : format(currentTime, 'hh:mm a');
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <CenteredView style={{ padding: 24 }}>
+
         {/* Cogwheel Button */}
         <Animated.View style={[styles.cogButton, { transform: [{ scale: scaleAnim }] }]}>
           <Pressable
             onPress={() => navigation.navigate('Settings')}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
+            onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.9, useNativeDriver: true }).start()}
+            onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start()}
             style={({ pressed }) => [
               styles.pressableArea,
               pressed && { opacity: 0.8 },
@@ -175,24 +187,27 @@ export default function HomeScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Clock Card */}
-        <View style={[styles.clockCard, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.timeText, { color: theme.colors.text }]}>
-            {formattedTime}
-          </Text>
+        {/* Time/Date Card */}
+        <Animated.View style={[styles.card, { backgroundColor: theme.colors.card, transform: [{ scale: bounceAnimTime }] }]}>
+          <Pressable onPress={handlePressTimeCard} style={{ alignItems: 'center' }}>
+            <Text style={[styles.timeText, { color: theme.colors.text }]}>{formattedTime}</Text>
+            <Text style={[styles.dateText, { color: theme.colors.text }]}>{formattedDate}</Text>
+          </Pressable>
+        </Animated.View>
 
-          {currentBlock && (
-            <Text style={[styles.periodText, { color: theme.colors.text }]}>
-              {currentBlock}
-            </Text>
-          )}
-
-          {minutesLeft !== null && (
-            <Animated.Text style={[styles.countdownText, { color: theme.colors.text, opacity: fadeAnim }]}>
-              {minutesLeft} min left
-            </Animated.Text>
-          )}
-        </View>
+        {/* Period/Countdown Card */}
+        <Animated.View style={[styles.card, { backgroundColor: theme.colors.card, transform: [{ scale: bounceAnimPeriod }] }]}>
+          <Pressable onPress={handlePressPeriodCard} style={{ alignItems: 'center' }}>
+            {currentBlock && (
+              <Text style={[styles.periodText, { color: theme.colors.text }]}>{currentBlock}</Text>
+            )}
+            {minutesLeft !== null && (
+              <Animated.Text style={[styles.countdownText, { color: theme.colors.text, opacity: fadeAnim }]}>
+                {minutesLeft} min left
+              </Animated.Text>
+            )}
+          </Pressable>
+        </Animated.View>
 
       </CenteredView>
     </SafeAreaView>
@@ -212,13 +227,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  clockCard: {
+  card: {
     width: '100%',
     padding: 24,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 32,
+    marginTop: 24,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
@@ -228,12 +243,17 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 48,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  dateText: {
+    fontSize: 18,
+    opacity: 0.8,
     textAlign: 'center',
   },
   periodText: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 26,
+    fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
   },
