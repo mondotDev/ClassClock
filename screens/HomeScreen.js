@@ -14,38 +14,34 @@ export default function HomeScreen() {
   const theme = useTheme();
   const { is24HourTime } = useSettings();
   const { schedules, activeScheduleId } = useSchedules();
+
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [currentBlock, setCurrentBlock] = useState('Loading...');
+  const [currentBlock, setCurrentBlock] = useState(null);
   const [minutesLeft, setMinutesLeft] = useState(null);
 
   const activeSchedule = schedules.find(s => s.id === activeScheduleId);
 
-  // 🔥 Sync updates exactly every new minute
   useEffect(() => {
-    updateTime(); // 🔥 Immediate update when screen mounts
-  
+    updateTime();
+
     const now = new Date();
     const msUntilNextMinute = (60 - now.getSeconds()) * 1000;
-  
-    const timeout = setTimeout(() => {
-      updateTime(); // First synced update at top of next minute
-      const interval = setInterval(updateTime, 60000);
-      setUpdater(interval);
+
+    const timeoutId = setTimeout(() => {
+      updateTime();
+      intervalId = setInterval(updateTime, 60000);
     }, msUntilNextMinute);
-  
-    let updater;
-    function setUpdater(interval) {
-      updater = interval;
-    }
-  
+
+    let intervalId;
+
     return () => {
-      clearTimeout(timeout);
-      clearInterval(updater);
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
     };
   }, []);
-  
 
   const updateTime = () => {
     const now = new Date();
@@ -55,12 +51,12 @@ export default function HomeScreen() {
 
   const updateCurrentBlock = (now) => {
     if (!activeSchedule) {
-      setCurrentBlock("No Schedule");
+      setCurrentBlock('No Schedule');
       setMinutesLeft(null);
       return;
     }
 
-    const dayOfWeek = format(now, 'EEE'); // e.g., Mon, Tue, etc.
+    const dayOfWeek = format(now, 'EEE');
     if (!activeSchedule.selectedDays.includes(dayOfWeek)) {
       setCurrentBlock('School Closed');
       setMinutesLeft(null);
@@ -69,7 +65,6 @@ export default function HomeScreen() {
 
     const allBlocks = [];
 
-    // Add periods
     activeSchedule.periods.forEach(p => {
       allBlocks.push({
         label: p.label,
@@ -78,7 +73,6 @@ export default function HomeScreen() {
       });
     });
 
-    // Add break
     if (activeSchedule.hasBreak) {
       allBlocks.push({
         label: 'Break',
@@ -87,7 +81,6 @@ export default function HomeScreen() {
       });
     }
 
-    // Add lunch
     if (activeSchedule.hasLunch) {
       allBlocks.push({
         label: 'Lunch',
@@ -96,7 +89,6 @@ export default function HomeScreen() {
       });
     }
 
-    // Sort all blocks by start time
     allBlocks.sort((a, b) => a.start - b.start);
 
     let found = false;
@@ -149,6 +141,16 @@ export default function HomeScreen() {
     }).start();
   };
 
+  // Trigger pulse when minutesLeft changes
+  useEffect(() => {
+    if (minutesLeft !== null) {
+      Animated.sequence([
+        Animated.timing(fadeAnim, { toValue: 0.8, duration: 100, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [minutesLeft]);
+
   const formattedTime = is24HourTime
     ? format(currentTime, 'HH:mm')
     : format(currentTime, 'hh:mm a');
@@ -166,27 +168,32 @@ export default function HomeScreen() {
               styles.pressableArea,
               pressed && { opacity: 0.8 },
             ]}
+            accessibilityLabel="Settings"
+            accessibilityHint="Navigate to Settings Screen"
           >
             <Ionicons name="settings-outline" size={28} color={theme.colors.text} />
           </Pressable>
         </Animated.View>
 
-        {/* Clock */}
-        <Text style={[styles.timeText, { color: theme.colors.text }]}>
-          {formattedTime}
-        </Text>
-
-        {/* Current Period */}
-        <Text style={[styles.periodText, { color: theme.colors.text }]}>
-          {currentBlock}
-        </Text>
-
-        {/* Countdown */}
-        {minutesLeft !== null && (
-          <Text style={[styles.countdownText, { color: theme.colors.text }]}>
-            {minutesLeft} min left
+        {/* Clock Card */}
+        <View style={[styles.clockCard, { backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.timeText, { color: theme.colors.text }]}>
+            {formattedTime}
           </Text>
-        )}
+
+          {currentBlock && (
+            <Text style={[styles.periodText, { color: theme.colors.text }]}>
+              {currentBlock}
+            </Text>
+          )}
+
+          {minutesLeft !== null && (
+            <Animated.Text style={[styles.countdownText, { color: theme.colors.text, opacity: fadeAnim }]}>
+              {minutesLeft} min left
+            </Animated.Text>
+          )}
+        </View>
+
       </CenteredView>
     </SafeAreaView>
   );
@@ -199,7 +206,24 @@ const styles = StyleSheet.create({
     right: 16,
   },
   pressableArea: {
-    padding: 8,
+    padding: 12,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clockCard: {
+    width: '100%',
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 32,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 3,
   },
   timeText: {
     fontSize: 48,
@@ -216,8 +240,5 @@ const styles = StyleSheet.create({
   countdownText: {
     fontSize: 20,
     textAlign: 'center',
-    opacity: 0.8,
   },
 });
-// This code is a React Native component for a home screen that displays the current time, the current school period, and a countdown timer for the remaining time in that period. It uses hooks to manage state and effects, and it also includes an animated cogwheel button that navigates to the settings screen when pressed. The component is styled using StyleSheet and uses date-fns for date manipulation.
-// The component also handles 24-hour and 12-hour time formats based on user settings. The current period is determined by checking the current time against a schedule that includes periods, breaks, and lunch times. The schedule is fetched from a context provider.
