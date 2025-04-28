@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# VS Code stuff
+.vscode/
+*.code-workspace
+
 # Native
 *.orig.*
 *.jks
