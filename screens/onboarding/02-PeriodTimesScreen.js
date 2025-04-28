@@ -1,14 +1,11 @@
 // screens/onboarding/02-PeriodTimesScreen.js
 
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useActionSheet } from '@expo/react-native-action-sheet';
+import { SafeAreaView, ScrollView, View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import AppButton from '../../components/AppButton';
 import useTheme from '../../hooks/useTheme';
-
-const HOURS = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
-const MINUTES = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
-const AMPM = ['AM', 'PM'];
+import { format } from 'date-fns';
 
 export default function PeriodTimesScreen({ navigation, route }) {
   const { name, selectedDays, hasZero, count } = route.params;
@@ -16,49 +13,49 @@ export default function PeriodTimesScreen({ navigation, route }) {
   const total = periodCount + (hasZero ? 1 : 0);
 
   const { colors } = useTheme();
-  const { showActionSheetWithOptions } = useActionSheet();
 
   const [periods, setPeriods] = useState(() =>
     Array.from({ length: total }, (_, i) => ({
       label: hasZero ? (i === 0 ? 'Zero' : `Period ${i}`) : `Period ${i + 1}`,
-      startHour: '8',
-      startMinute: '00',
-      startAMPM: 'AM',
-      endHour: '9',
-      endMinute: '00',
-      endAMPM: 'AM',
+      startTime: new Date(),
+      endTime: new Date(),
     }))
   );
 
-  const handleChange = (idx, field, value) => {
+  const [pickerState, setPickerState] = useState({
+    isVisible: false,
+    mode: 'time',
+    field: null, // { idx, type: 'start' or 'end' }
+  });
+
+  const handleTimeChange = (event, selectedTime) => {
+    if (event.type === 'dismissed' || !selectedTime) {
+      setPickerState({ isVisible: false, mode: 'time', field: null });
+      return;
+    }
+
+    const { idx, type } = pickerState.field;
     const updated = [...periods];
-    updated[idx][field] = value;
+    updated[idx][type === 'start' ? 'startTime' : 'endTime'] = selectedTime;
     setPeriods(updated);
+    setPickerState({ isVisible: false, mode: 'time', field: null });
   };
 
-  const openPicker = (idx, field, options) => {
-    showActionSheetWithOptions(
-      {
-        options: [...options, 'Cancel'],
-        cancelButtonIndex: options.length,
-      },
-      (selectedIndex) => {
-        if (selectedIndex !== undefined && selectedIndex !== options.length) {
-          handleChange(idx, field, options[selectedIndex]);
-        }
-      }
-    );
+  const openTimePicker = (idx, type) => {
+    setPickerState({
+      isVisible: true,
+      mode: 'time',
+      field: { idx, type },
+    });
   };
 
-  const allFilled = periods.every(
-    p => p.startHour && p.startMinute && p.startAMPM && p.endHour && p.endMinute && p.endAMPM
-  );
+  const allFilled = periods.every(p => p.startTime && p.endTime);
 
   const handleNext = () => {
     const finalPeriods = periods.map(p => ({
       label: p.label,
-      startTime: `${p.startHour}:${p.startMinute} ${p.startAMPM}`,
-      endTime: `${p.endHour}:${p.endMinute} ${p.endAMPM}`,
+      startTime: format(p.startTime, 'h:mm a'),
+      endTime: format(p.endTime, 'h:mm a'),
     }));
 
     navigation.navigate('BreakLunch', {
@@ -72,26 +69,29 @@ export default function PeriodTimesScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {periods.map((p, idx) => (
           <View key={idx} style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.periodLabel, { color: colors.text }]}>{p.label}</Text>
 
-            <Text style={[styles.subLabel, { color: colors.text }]}>Start Time</Text>
             <View style={styles.timeRow}>
-              <TimeButton label={p.startHour} onPress={() => openPicker(idx, 'startHour', HOURS)} />
-              <TimeButton label={p.startMinute} onPress={() => openPicker(idx, 'startMinute', MINUTES)} />
-              <TimeButton label={p.startAMPM} onPress={() => openPicker(idx, 'startAMPM', AMPM)} />
-            </View>
+              <Pressable
+                style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                onPress={() => openTimePicker(idx, 'start')}
+              >
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                  Start: {format(p.startTime, 'h:mm a')}
+                </Text>
+              </Pressable>
 
-            <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>End Time</Text>
-            <View style={styles.timeRow}>
-              <TimeButton label={p.endHour} onPress={() => openPicker(idx, 'endHour', HOURS)} />
-              <TimeButton label={p.endMinute} onPress={() => openPicker(idx, 'endMinute', MINUTES)} />
-              <TimeButton label={p.endAMPM} onPress={() => openPicker(idx, 'endAMPM', AMPM)} />
+              <Pressable
+                style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                onPress={() => openTimePicker(idx, 'end')}
+              >
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                  End: {format(p.endTime, 'h:mm a')}
+                </Text>
+              </Pressable>
             </View>
           </View>
         ))}
@@ -102,16 +102,22 @@ export default function PeriodTimesScreen({ navigation, route }) {
           disabled={!allFilled}
           style={{ marginTop: 32 }}
         />
+
+        {pickerState.isVisible && (
+          <DateTimePicker
+            value={
+              pickerState.field?.type === 'start'
+                ? periods[pickerState.field.idx].startTime
+                : periods[pickerState.field.idx].endTime
+            }
+            mode={pickerState.mode}
+            is24Hour={false}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleTimeChange}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function TimeButton({ label, onPress }) {
-  return (
-    <TouchableOpacity style={styles.timeButton} onPress={onPress}>
-      <Text style={styles.timeButtonText}>{label}</Text>
-    </TouchableOpacity>
   );
 }
 
@@ -137,23 +143,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  subLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
   timeRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     gap: 12,
   },
   timeButton: {
+    flex: 1,
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#e0e0e0',
     borderRadius: 10,
-    minWidth: 60,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   timeButtonText: {
     fontSize: 18,

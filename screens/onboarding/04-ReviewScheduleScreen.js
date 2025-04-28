@@ -38,32 +38,45 @@ export default function ReviewScheduleScreen({ route }) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={[styles.title, { color: theme.colors.text }]}>
           Review Your Schedule
         </Text>
 
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+          
           {/* Schedule Basic Info */}
           <View style={styles.section}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>Schedule Name:</Text>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Schedule Name</Text>
             <Text style={[styles.value, { color: theme.colors.text }]}>{name}</Text>
+          </View>
 
-            <Text style={[styles.label, { color: theme.colors.text, marginTop: 12 }]}>Selected Days:</Text>
-            <Text style={[styles.value, { color: theme.colors.text }]}>{selectedDays.join(", ")}</Text>
+          {/* Selected Days */}
+          <View style={styles.section}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Selected Days</Text>
+            <View style={styles.chipContainer}>
+              {selectedDays.map((day, idx) => (
+                <View key={idx} style={[styles.chip, { backgroundColor: theme.colors.primary }]}>
+                  <Text style={[styles.chipText, { color: theme.colors.background }]}>{day}</Text>
+                </View>
+              ))}
+            </View>
           </View>
 
           {/* Periods */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Periods:</Text>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Periods</Text>
             {periods.map((p, idx) => (
               <View key={idx} style={styles.periodRow}>
-                <Text style={[styles.label, { color: theme.colors.text }]}>{p.label}</Text>
-                <Text style={[styles.value, { color: theme.colors.text }]}>{p.startTime} - {p.endTime}</Text>
-                {idx !== periods.length - 1 && <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />}
+                <View style={styles.periodHeader}>
+                  <Text style={[styles.periodLabel, { color: theme.colors.text }]}>{p.label}</Text>
+                  <Text style={[styles.periodTime, { color: theme.colors.text }]}>
+                    {p.startTime} - {p.endTime}
+                  </Text>
+                </View>
+                {idx !== periods.length - 1 && (
+                  <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+                )}
               </View>
             ))}
           </View>
@@ -71,29 +84,38 @@ export default function ReviewScheduleScreen({ route }) {
           {/* Extras */}
           {(hasBreak || hasLunch) && (
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Extra Times:</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Extra Times</Text>
 
               {hasBreak && (
                 <View style={styles.periodRow}>
-                  <Text style={[styles.label, { color: theme.colors.text }]}>Break:</Text>
-                  <Text style={[styles.value, { color: theme.colors.text }]}>{breakStartTime} - {breakEndTime}</Text>
+                  <View style={styles.periodHeader}>
+                    <Text style={[styles.periodLabel, { color: theme.colors.text }]}>Break</Text>
+                    <Text style={[styles.periodTime, { color: theme.colors.text }]}>
+                      {breakStartTime} - {breakEndTime}
+                    </Text>
+                  </View>
                 </View>
               )}
 
               {hasLunch && (
                 <View style={styles.periodRow}>
-                  <Text style={[styles.label, { color: theme.colors.text }]}>Lunch:</Text>
-                  <Text style={[styles.value, { color: theme.colors.text }]}>{lunchStartTime} - {lunchEndTime}</Text>
+                  <View style={styles.periodHeader}>
+                    <Text style={[styles.periodLabel, { color: theme.colors.text }]}>Lunch</Text>
+                    <Text style={[styles.periodTime, { color: theme.colors.text }]}>
+                      {lunchStartTime} - {lunchEndTime}
+                    </Text>
+                  </View>
                 </View>
               )}
             </View>
           )}
+
         </View>
 
         <AppButton
           title="Save Schedule"
           onPress={handleSave}
-          style={{ marginVertical: 32 }}
+          style={{ marginTop: 32 }}
         />
       </ScrollView>
     </SafeAreaView>
@@ -105,6 +127,7 @@ const styles = StyleSheet.create({
     marginTop: 48,
     paddingHorizontal: 24,
     alignItems: "stretch",
+    paddingBottom: 48,
   },
   title: {
     fontSize: 26,
@@ -114,8 +137,8 @@ const styles = StyleSheet.create({
   },
   card: {
     width: "100%",
-    padding: 20,
-    borderRadius: 12,
+    padding: 28, // Slightly larger for breathing room
+    borderRadius: 16,
     marginBottom: 24,
     elevation: 3,
     shadowColor: "#000",
@@ -127,25 +150,55 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     marginBottom: 12,
   },
   label: {
     fontSize: 16,
     fontWeight: "600",
-    marginBottom: 4,
+    marginBottom: 8,
   },
   value: {
     fontSize: 16,
     marginBottom: 8,
   },
+  chipContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
   periodRow: {
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  periodHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  periodLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  periodTime: {
+    fontSize: 16,
+    opacity: 0.8,
   },
   divider: {
     height: 1,
-    marginVertical: 8,
-    opacity: 0.4,
+    marginTop: 12,
+    marginBottom: 12,
+    opacity: 0.3,
   },
 });

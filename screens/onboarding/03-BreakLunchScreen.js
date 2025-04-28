@@ -1,44 +1,66 @@
 // screens/onboarding/03-BreakLunchScreen.js
 
 import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useActionSheet } from '@expo/react-native-action-sheet';
+import { SafeAreaView, ScrollView, View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Checkbox from 'expo-checkbox';
 import AppButton from '../../components/AppButton';
 import useTheme from '../../hooks/useTheme';
-
-const HOURS = Array.from({ length: 12 }, (_, i) => (i + 1).toString());
-const MINUTES = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0'));
-const AMPM = ['AM', 'PM'];
+import { format } from 'date-fns';
 
 export default function BreakLunchScreen({ navigation, route }) {
   const { name, selectedDays, hasZero, count, periods } = route.params;
   const { colors } = useTheme();
-  const { showActionSheetWithOptions } = useActionSheet();
 
   const [hasBreak, setHasBreak] = useState(false);
-  const [breakStart, setBreakStart] = useState({ hour: '10', minute: '00', ampm: 'AM' });
-  const [breakEnd, setBreakEnd] = useState({ hour: '10', minute: '15', ampm: 'AM' });
+  const [breakStart, setBreakStart] = useState(new Date());
+  const [breakEnd, setBreakEnd] = useState(new Date());
 
   const [hasLunch, setHasLunch] = useState(false);
-  const [lunchStart, setLunchStart] = useState({ hour: '12', minute: '00', ampm: 'PM' });
-  const [lunchEnd, setLunchEnd] = useState({ hour: '12', minute: '30', ampm: 'PM' });
+  const [lunchStart, setLunchStart] = useState(new Date());
+  const [lunchEnd, setLunchEnd] = useState(new Date());
 
-  const openPicker = (setter, field, options) => {
-    showActionSheetWithOptions(
-      {
-        options: [...options, 'Cancel'],
-        cancelButtonIndex: options.length,
-      },
-      (selectedIndex) => {
-        if (selectedIndex !== undefined && selectedIndex !== options.length) {
-          setter(prev => ({ ...prev, [field]: options[selectedIndex] }));
-        }
-      }
-    );
+  const [pickerState, setPickerState] = useState({
+    isVisible: false,
+    mode: 'time',
+    target: null, // { type: 'breakStart' | 'breakEnd' | 'lunchStart' | 'lunchEnd' }
+  });
+
+  const openTimePicker = (target) => {
+    setPickerState({
+      isVisible: true,
+      mode: 'time',
+      target,
+    });
   };
 
-  const allValid = (!hasBreak || (breakStart && breakEnd)) && (!hasLunch || (lunchStart && lunchEnd));
+  const handleTimeChange = (event, selectedTime) => {
+    if (event.type === 'dismissed' || !selectedTime) {
+      setPickerState({ isVisible: false, mode: 'time', target: null });
+      return;
+    }
+
+    switch (pickerState.target) {
+      case 'breakStart':
+        setBreakStart(selectedTime);
+        break;
+      case 'breakEnd':
+        setBreakEnd(selectedTime);
+        break;
+      case 'lunchStart':
+        setLunchStart(selectedTime);
+        break;
+      case 'lunchEnd':
+        setLunchEnd(selectedTime);
+        break;
+    }
+
+    setPickerState({ isVisible: false, mode: 'time', target: null });
+  };
+
+  const allValid =
+    (!hasBreak || (breakStart && breakEnd)) &&
+    (!hasLunch || (lunchStart && lunchEnd));
 
   const handleNext = () => {
     navigation.navigate('ReviewSchedule', {
@@ -48,20 +70,18 @@ export default function BreakLunchScreen({ navigation, route }) {
       count,
       periods,
       hasBreak,
-      breakStartTime: `${breakStart.hour}:${breakStart.minute} ${breakStart.ampm}`,
-      breakEndTime: `${breakEnd.hour}:${breakEnd.minute} ${breakEnd.ampm}`,
+      breakStartTime: format(breakStart, 'h:mm a'),
+      breakEndTime: format(breakEnd, 'h:mm a'),
       hasLunch,
-      lunchStartTime: `${lunchStart.hour}:${lunchStart.minute} ${lunchStart.ampm}`,
-      lunchEndTime: `${lunchEnd.hour}:${lunchEnd.minute} ${lunchEnd.ampm}`,
+      lunchStartTime: format(lunchStart, 'h:mm a'),
+      lunchEndTime: format(lunchEnd, 'h:mm a'),
     });
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        
         {/* Break Card */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
           <View style={styles.row}>
@@ -75,18 +95,24 @@ export default function BreakLunchScreen({ navigation, route }) {
 
           {hasBreak && (
             <>
-              <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>Break Start Time</Text>
               <View style={styles.timeRow}>
-                <TimeButton label={breakStart.hour} onPress={() => openPicker(setBreakStart, 'hour', HOURS)} />
-                <TimeButton label={breakStart.minute} onPress={() => openPicker(setBreakStart, 'minute', MINUTES)} />
-                <TimeButton label={breakStart.ampm} onPress={() => openPicker(setBreakStart, 'ampm', AMPM)} />
-              </View>
+                <Pressable
+                  style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                  onPress={() => openTimePicker('breakStart')}
+                >
+                  <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                    Break Start: {format(breakStart, 'h:mm a')}
+                  </Text>
+                </Pressable>
 
-              <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>Break End Time</Text>
-              <View style={styles.timeRow}>
-                <TimeButton label={breakEnd.hour} onPress={() => openPicker(setBreakEnd, 'hour', HOURS)} />
-                <TimeButton label={breakEnd.minute} onPress={() => openPicker(setBreakEnd, 'minute', MINUTES)} />
-                <TimeButton label={breakEnd.ampm} onPress={() => openPicker(setBreakEnd, 'ampm', AMPM)} />
+                <Pressable
+                  style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                  onPress={() => openTimePicker('breakEnd')}
+                >
+                  <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                    Break End: {format(breakEnd, 'h:mm a')}
+                  </Text>
+                </Pressable>
               </View>
             </>
           )}
@@ -105,18 +131,24 @@ export default function BreakLunchScreen({ navigation, route }) {
 
           {hasLunch && (
             <>
-              <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>Lunch Start Time</Text>
               <View style={styles.timeRow}>
-                <TimeButton label={lunchStart.hour} onPress={() => openPicker(setLunchStart, 'hour', HOURS)} />
-                <TimeButton label={lunchStart.minute} onPress={() => openPicker(setLunchStart, 'minute', MINUTES)} />
-                <TimeButton label={lunchStart.ampm} onPress={() => openPicker(setLunchStart, 'ampm', AMPM)} />
-              </View>
+                <Pressable
+                  style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                  onPress={() => openTimePicker('lunchStart')}
+                >
+                  <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                    Lunch Start: {format(lunchStart, 'h:mm a')}
+                  </Text>
+                </Pressable>
 
-              <Text style={[styles.subLabel, { color: colors.text, marginTop: 16 }]}>Lunch End Time</Text>
-              <View style={styles.timeRow}>
-                <TimeButton label={lunchEnd.hour} onPress={() => openPicker(setLunchEnd, 'hour', HOURS)} />
-                <TimeButton label={lunchEnd.minute} onPress={() => openPicker(setLunchEnd, 'minute', MINUTES)} />
-                <TimeButton label={lunchEnd.ampm} onPress={() => openPicker(setLunchEnd, 'ampm', AMPM)} />
+                <Pressable
+                  style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                  onPress={() => openTimePicker('lunchEnd')}
+                >
+                  <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                    Lunch End: {format(lunchEnd, 'h:mm a')}
+                  </Text>
+                </Pressable>
               </View>
             </>
           )}
@@ -129,16 +161,23 @@ export default function BreakLunchScreen({ navigation, route }) {
           disabled={!allValid}
           style={{ marginTop: 32 }}
         />
+
+        {pickerState.isVisible && (
+          <DateTimePicker
+            value={
+              pickerState.target === 'breakStart' ? breakStart :
+              pickerState.target === 'breakEnd' ? breakEnd :
+              pickerState.target === 'lunchStart' ? lunchStart :
+              lunchEnd
+            }
+            mode={pickerState.mode}
+            is24Hour={false}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleTimeChange}
+          />
+        )}
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function TimeButton({ label, onPress }) {
-  return (
-    <TouchableOpacity style={styles.timeButton} onPress={onPress}>
-      <Text style={styles.timeButtonText}>{label}</Text>
-    </TouchableOpacity>
   );
 }
 
@@ -162,31 +201,26 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-  subLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 16,
   },
   timeRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     gap: 12,
   },
   timeButton: {
+    flex: 1,
     paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#e0e0e0',
     borderRadius: 10,
-    minWidth: 60,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   timeButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
 });
