@@ -38,3 +38,19 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# ⚡️ Android build artifacts (after npx expo prebuild)
+android/app/build/
+android/build/
+android/.gradle/
+android/.idea/
+android/local.properties
+android/.cxx/
+
+# ⚡️ iOS build artifacts (if you ever open Xcode after prebuild)
+ios/build/
+ios/Pods/
+ios/Podfile.lock
+ios/.xcworkspace/
+ios/*.xcodeproj/
+ios/*.xcworkspace/
