@@ -8,17 +8,33 @@ import useTheme from "../../hooks/useTheme";
 import { useSchedules } from "../../context/AppContext";
 
 export default function ReviewScheduleScreen({ route }) {
-  const { name, selectedDays, hasZero, count, periods, hasBreak, breakStartTime, breakEndTime, hasLunch, lunchStartTime, lunchEndTime } = route.params;
+  const {
+    name,
+    selectedDays,
+    hasZero,
+    count,
+    periods,
+    hasBreak,
+    breakStartTime,
+    breakEndTime,
+    hasLunch,
+    lunchStartTime,
+    lunchEndTime,
+    edit = false,
+    existingSchedule = null,
+  } = route.params;
+
   const navigation = useNavigation();
   const theme = useTheme();
-  const { addSchedule } = useSchedules();
+  const { addSchedule, updateSchedule } = useSchedules();
 
   const handleSave = () => {
     const scheduleData = {
-      id: Date.now().toString(),
+      id: edit && existingSchedule ? existingSchedule.id : Date.now().toString(),
       name,
       selectedDays,
       hasZero,
+      count, // ✅ Ensure this is included
       periods,
       hasBreak,
       breakStartTime,
@@ -28,12 +44,16 @@ export default function ReviewScheduleScreen({ route }) {
       lunchEndTime,
     };
 
-    addSchedule(scheduleData);
+    if (edit && existingSchedule) {
+      updateSchedule(scheduleData);
+    } else {
+      addSchedule(scheduleData);
+    }
 
     if (Platform.OS === 'android') {
-      ToastAndroid.show('Schedule Created!', ToastAndroid.SHORT);
+      ToastAndroid.show('Schedule Saved!', ToastAndroid.SHORT);
     } else {
-      Alert.alert('Success', 'Schedule Created!');
+      Alert.alert('Success', 'Schedule Saved!');
     }
 
     setTimeout(() => {
@@ -41,18 +61,15 @@ export default function ReviewScheduleScreen({ route }) {
         index: 0,
         routes: [{ name: "Home" }],
       });
-    }, 500); // slight delay before navigating
+    }, 500);
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={[styles.title, { color: theme.colors.text }]}>
-          Review Your Schedule
-        </Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Review Your Schedule</Text>
 
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-          
           {/* Schedule Basic Info */}
           <View style={styles.section}>
             <Text style={[styles.label, { color: theme.colors.text }]}>Schedule Name</Text>
@@ -125,7 +142,6 @@ export default function ReviewScheduleScreen({ route }) {
               )}
             </View>
           )}
-
         </View>
 
         <AppButton
@@ -218,5 +234,3 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
 });
-// This screen allows users to review their schedule before saving it. It displays the schedule name, selected days, periods, and any extra times (break/lunch). The user can save the schedule, which will be added to the context and reset the navigation stack to the home screen.
-// The screen uses a card layout for better visual separation and includes a button to save the schedule. The styles are responsive to the theme colors for better integration with the app's design.

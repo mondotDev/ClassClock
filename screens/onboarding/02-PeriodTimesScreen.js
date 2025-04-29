@@ -1,6 +1,6 @@
 // screens/onboarding/02-PeriodTimesScreen.js
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, View, Text, StyleSheet, Pressable, TextInput, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AppButton from '../../components/AppButton';
@@ -8,19 +8,27 @@ import useTheme from '../../hooks/useTheme';
 import { format } from 'date-fns';
 
 export default function PeriodTimesScreen({ navigation, route }) {
-  const { name, selectedDays, hasZero, count } = route.params;
+  const { name, selectedDays, hasZero, count, edit = false, existingSchedule = null } = route.params;
   const periodCount = Number(count);
   const total = periodCount + (hasZero ? 1 : 0);
 
   const { colors } = useTheme();
 
-  const [periods, setPeriods] = useState(() =>
-    Array.from({ length: total }, (_, i) => ({
-      label: hasZero ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`,
-      startTime: new Date(),
-      endTime: new Date(),
-    }))
-  );
+  const [periods, setPeriods] = useState(() => {
+    if (edit && existingSchedule && existingSchedule.periods) {
+      return existingSchedule.periods.map((p, i) => ({
+        label: p.label || (hasZero ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`),
+        startTime: parseTime(p.startTime),
+        endTime: parseTime(p.endTime),
+      }));
+    } else {
+      return Array.from({ length: total }, (_, i) => ({
+        label: hasZero ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`,
+        startTime: new Date(),
+        endTime: new Date(),
+      }));
+    }
+  });
 
   const [pickerState, setPickerState] = useState({
     isVisible: false,
@@ -70,6 +78,8 @@ export default function PeriodTimesScreen({ navigation, route }) {
       hasZero,
       count,
       periods: finalPeriods,
+      edit,
+      existingSchedule,
     });
   };
 
@@ -78,7 +88,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {periods.map((p, idx) => (
           <View key={idx} style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.periodLabel, { color: colors.text }]}>
+            <Text style={[styles.periodLabel, { color: colors.text }]}>  
               {hasZero && idx === 0 ? "Zero Period" : `Period ${hasZero ? idx : idx + 1}`}
             </Text>
 
@@ -95,7 +105,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
                 style={[styles.timeButton, { backgroundColor: colors.primary }]}
                 onPress={() => openTimePicker(idx, 'start')}
               >
-                <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>  
                   Start: {format(p.startTime, 'h:mm a')}
                 </Text>
               </Pressable>
@@ -104,7 +114,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
                 style={[styles.timeButton, { backgroundColor: colors.primary }]}
                 onPress={() => openTimePicker(idx, 'end')}
               >
-                <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>  
                   End: {format(p.endTime, 'h:mm a')}
                 </Text>
               </Pressable>
@@ -135,6 +145,23 @@ export default function PeriodTimesScreen({ navigation, route }) {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function parseTime(timeString) {
+  try {
+    const [time, ampm] = timeString.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    const now = new Date();
+    now.setHours(hours);
+    now.setMinutes(minutes);
+    now.setSeconds(0);
+    now.setMilliseconds(0);
+    return now;
+  } catch (e) {
+    return new Date();
+  }
 }
 
 const styles = StyleSheet.create({

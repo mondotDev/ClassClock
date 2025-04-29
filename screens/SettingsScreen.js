@@ -32,7 +32,8 @@ export default function SettingsScreen() {
     setActiveScheduleName(schedule ? schedule.name : null);
   }, [schedules, activeScheduleId]);
 
-  // Handlers
+  // --- Handlers --- //
+
   const handleDelete = () => {
     if (!activeScheduleId) return;
     Alert.alert("Delete Schedule", "Are you sure you want to delete this schedule?", [
@@ -52,12 +53,33 @@ export default function SettingsScreen() {
   };
 
   const handleEdit = () => {
-    Alert.alert("Coming Soon", "Editing schedules will be available in a future update.");
+    const activeSchedule = schedules.find(s => s.id === activeScheduleId);
+    if (!activeSchedule) {
+      Alert.alert("Error", "No active schedule to edit.");
+      return;
+    }
+
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: "ScheduleName",
+            params: {
+              edit: true,
+              existingSchedule: activeSchedule,
+            },
+          },
+        ],
+      })
+    );
   };
 
   const handleUpgrade = () => {
     Alert.alert("Coming Soon", "Pro features coming soon!");
   };
+
+  // --- Render --- //
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -126,6 +148,8 @@ export default function SettingsScreen() {
   );
 }
 
+// --- Styles --- //
+
 const styles = StyleSheet.create({
   container: {
     marginTop: 36,
@@ -141,7 +165,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   backButton: {
-    padding: 12, // slightly larger touch target
+    padding: 12,
   },
   headerTitle: {
     fontSize: 22,
@@ -155,7 +179,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 24,
-    shadowColor: "#000", // Light enough not to need change now
+    shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
@@ -171,7 +195,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   iconButton: {
-    padding: 10, // slightly larger
+    padding: 10,
     borderRadius: 8,
     marginLeft: 8,
   },

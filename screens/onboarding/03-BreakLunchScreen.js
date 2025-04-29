@@ -1,6 +1,6 @@
 // screens/onboarding/03-BreakLunchScreen.js
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Checkbox from 'expo-checkbox';
@@ -9,7 +9,7 @@ import useTheme from '../../hooks/useTheme';
 import { format } from 'date-fns';
 
 export default function BreakLunchScreen({ navigation, route }) {
-  const { name, selectedDays, hasZero, count, periods } = route.params;
+  const { name, selectedDays, hasZero, count, periods, edit = false, existingSchedule = null } = route.params;
   const { colors } = useTheme();
 
   const [hasBreak, setHasBreak] = useState(false);
@@ -20,10 +20,26 @@ export default function BreakLunchScreen({ navigation, route }) {
   const [lunchStart, setLunchStart] = useState(new Date());
   const [lunchEnd, setLunchEnd] = useState(new Date());
 
+  useEffect(() => {
+    if (edit && existingSchedule) {
+      setHasBreak(existingSchedule.hasBreak ?? false);
+      setHasLunch(existingSchedule.hasLunch ?? false);
+
+      if (existingSchedule.hasBreak) {
+        setBreakStart(parseTime(existingSchedule.breakStartTime));
+        setBreakEnd(parseTime(existingSchedule.breakEndTime));
+      }
+      if (existingSchedule.hasLunch) {
+        setLunchStart(parseTime(existingSchedule.lunchStartTime));
+        setLunchEnd(parseTime(existingSchedule.lunchEndTime));
+      }
+    }
+  }, [edit, existingSchedule]);
+
   const [pickerState, setPickerState] = useState({
     isVisible: false,
     mode: 'time',
-    target: null, // { type: 'breakStart' | 'breakEnd' | 'lunchStart' | 'lunchEnd' }
+    target: null,
   });
 
   const openTimePicker = (target) => {
@@ -58,9 +74,7 @@ export default function BreakLunchScreen({ navigation, route }) {
     setPickerState({ isVisible: false, mode: 'time', target: null });
   };
 
-  const allValid =
-    (!hasBreak || (breakStart && breakEnd)) &&
-    (!hasLunch || (lunchStart && lunchEnd));
+  const allValid = (!hasBreak || (breakStart && breakEnd)) && (!hasLunch || (lunchStart && lunchEnd));
 
   const handleNext = () => {
     navigation.navigate('ReviewSchedule', {
@@ -75,13 +89,14 @@ export default function BreakLunchScreen({ navigation, route }) {
       hasLunch,
       lunchStartTime: format(lunchStart, 'h:mm a'),
       lunchEndTime: format(lunchEnd, 'h:mm a'),
+      edit,
+      existingSchedule,
     });
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        
         {/* Break Card */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
           <View style={styles.row}>
@@ -94,27 +109,25 @@ export default function BreakLunchScreen({ navigation, route }) {
           </View>
 
           {hasBreak && (
-            <>
-              <View style={styles.timeRow}>
-                <Pressable
-                  style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                  onPress={() => openTimePicker('breakStart')}
-                >
-                  <Text style={[styles.timeButtonText, { color: colors.background }]}>
-                    Break Start: {format(breakStart, 'h:mm a')}
-                  </Text>
-                </Pressable>
+            <View style={styles.timeRow}>
+              <Pressable
+                style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                onPress={() => openTimePicker('breakStart')}
+              >
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>  
+                  Break Start: {format(breakStart, 'h:mm a')}
+                </Text>
+              </Pressable>
 
-                <Pressable
-                  style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                  onPress={() => openTimePicker('breakEnd')}
-                >
-                  <Text style={[styles.timeButtonText, { color: colors.background }]}>
-                    Break End: {format(breakEnd, 'h:mm a')}
-                  </Text>
-                </Pressable>
-              </View>
-            </>
+              <Pressable
+                style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                onPress={() => openTimePicker('breakEnd')}
+              >
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>  
+                  Break End: {format(breakEnd, 'h:mm a')}
+                </Text>
+              </Pressable>
+            </View>
           )}
         </View>
 
@@ -130,31 +143,28 @@ export default function BreakLunchScreen({ navigation, route }) {
           </View>
 
           {hasLunch && (
-            <>
-              <View style={styles.timeRow}>
-                <Pressable
-                  style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                  onPress={() => openTimePicker('lunchStart')}
-                >
-                  <Text style={[styles.timeButtonText, { color: colors.background }]}>
-                    Lunch Start: {format(lunchStart, 'h:mm a')}
-                  </Text>
-                </Pressable>
+            <View style={styles.timeRow}>
+              <Pressable
+                style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                onPress={() => openTimePicker('lunchStart')}
+              >
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>  
+                  Lunch Start: {format(lunchStart, 'h:mm a')}
+                </Text>
+              </Pressable>
 
-                <Pressable
-                  style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                  onPress={() => openTimePicker('lunchEnd')}
-                >
-                  <Text style={[styles.timeButtonText, { color: colors.background }]}>
-                    Lunch End: {format(lunchEnd, 'h:mm a')}
-                  </Text>
-                </Pressable>
-              </View>
-            </>
+              <Pressable
+                style={[styles.timeButton, { backgroundColor: colors.primary }]}
+                onPress={() => openTimePicker('lunchEnd')}
+              >
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>  
+                  Lunch End: {format(lunchEnd, 'h:mm a')}
+                </Text>
+              </Pressable>
+            </View>
           )}
         </View>
 
-        {/* Next Button */}
         <AppButton
           title="Next"
           onPress={handleNext}
@@ -179,6 +189,23 @@ export default function BreakLunchScreen({ navigation, route }) {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function parseTime(timeString) {
+  try {
+    const [time, ampm] = timeString.split(' ');
+    let [hours, minutes] = time.split(':').map(Number);
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    const now = new Date();
+    now.setHours(hours);
+    now.setMinutes(minutes);
+    now.setSeconds(0);
+    now.setMilliseconds(0);
+    return now;
+  } catch (e) {
+    return new Date();
+  }
 }
 
 const styles = StyleSheet.create({
