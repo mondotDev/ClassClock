@@ -12,32 +12,19 @@ export function AppProvider({ children }) {
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [is24HourTime, setIs24HourTime] = useState(false);
+  const [isPro, setIsPro] = useState(true); // 🔥 You can default to false if you want to simulate free user
 
   useEffect(() => {
     const loadData = async () => {
-      try {
-        const storedSchedules = await AsyncStorage.getItem('@schedules');
-        const storedActiveId = await AsyncStorage.getItem('@activeScheduleId');
-        const storedDark = await AsyncStorage.getItem('@isDarkMode');
-        const stored24 = await AsyncStorage.getItem('@is24HourTime');
+      const storedSchedules = await AsyncStorage.getItem('@schedules');
+      const storedActiveId = await AsyncStorage.getItem('@activeScheduleId');
+      const storedDark = await AsyncStorage.getItem('@isDarkMode');
+      const stored24 = await AsyncStorage.getItem('@is24HourTime');
 
-        if (storedSchedules) {
-          const parsed = JSON.parse(storedSchedules);
-          if (Array.isArray(parsed)) {
-            setSchedules(parsed);
-          } else {
-            console.warn('Invalid @schedules format, resetting.');
-            setSchedules([]);
-          }
-        }
-
-        if (storedActiveId) setActiveScheduleId(storedActiveId);
-        if (storedDark) setIsDarkMode(storedDark === 'true');
-        if (stored24) setIs24HourTime(stored24 === 'true');
-      } catch (e) {
-        console.error('Failed to load app data from AsyncStorage:', e);
-        setSchedules([]);
-      }
+      if (storedSchedules) setSchedules(JSON.parse(storedSchedules));
+      if (storedActiveId) setActiveScheduleId(storedActiveId);
+      if (storedDark) setIsDarkMode(storedDark === 'true');
+      if (stored24) setIs24HourTime(stored24 === 'true');
     };
 
     loadData();
@@ -87,6 +74,8 @@ export function AppProvider({ children }) {
         deleteSchedule,
         updateSchedule,
         setActiveScheduleId,
+        isPro,
+        setIsPro, // now you can change it dynamically later
       }}
     >
       <SettingsContext.Provider
