@@ -7,7 +7,7 @@ import { useSchedules } from "../../context/AppContext";
 
 
 export default function ReviewScheduleScreen({ route }) {
-  console.log('ReviewScreen params:', route.params);
+  // console.log('ReviewScreen params:', route.params);
 
   const {
     scheduleName,

@@ -1,309 +1,295 @@
-// screens/SettingsScreen.js
-
-import React, { useEffect, useState } from "react";
+import React from 'react';
 import {
   SafeAreaView,
   ScrollView,
   View,
   Text,
   StyleSheet,
-  Switch,
-  Alert,
   Pressable,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, CommonActions } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useSettings, useSchedules } from "../context/AppContext";
-import AppButton from "../components/AppButton";
-import useTheme from "../hooks/useTheme";
-import { format } from "date-fns";
+  Alert,
+  Switch,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import AppButton from '../components/AppButton';
+import useTheme from '../hooks/useTheme';
+import { useSettings, useSchedules } from '../context/AppContext';
+import { format } from 'date-fns';
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const theme = useTheme();
-
-  const { isDarkMode, setIsDarkMode, is24HourTime, setIs24HourTime } =
-    useSettings();
   const { schedules, deleteSchedule, isPro, setIsPro } = useSchedules();
+  const { isDarkMode, setIsDarkMode, is24HourTime, setIs24HourTime } = useSettings();
 
-  const [todaySchedule, setTodaySchedule] = useState(null);
+  const handleEditSchedule = (schedule) => {
+    navigation.navigate('ScheduleName', {
+      scheduleName: schedule.name,
+      selectedDays: schedule.selectedDays,
+      hasZeroPeriod: schedule.hasZeroPeriod,
+      numPeriods: schedule.numPeriods,
+      edit: true,
+      existingSchedule: schedule,
+    });
+  };
 
-  useEffect(() => {
-    const today = format(new Date(), "EEE"); // Mon, Tue, etc.
-    const match = schedules.find((s) => s.selectedDays?.includes(today));
-    setTodaySchedule(match || null);
-  }, [schedules]);
-
-  const handleDelete = (id) => {
+  const handleDeleteSchedule = (schedule) => {
     Alert.alert(
-      "Delete Schedule",
-      "Are you sure you want to delete this schedule?",
+      'Delete Schedule',
+      `Are you sure you want to delete "${schedule.name}"?`,
       [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => deleteSchedule(id),
-        },
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteSchedule(schedule.id) },
       ]
     );
   };
 
-  const handleAddNew = async () => {
-    await AsyncStorage.removeItem("@hasOnboarded");
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: "ScheduleName" }],
-      })
-    );
-  };
-
-  const handleEdit = (schedule) => {
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [
-          {
-            name: "ScheduleName",
-            params: {
-              edit: true,
-              existingSchedule: schedule,
-            },
-          },
-        ],
-      })
-    );
+  const handleCreateNewSchedule = () => {
+    navigation.navigate('ScheduleName');
   };
 
   const handleUpgrade = () => {
-    Alert.alert("Coming Soon", "Pro features coming soon!");
+    Alert.alert('Upgrade to Pro', 'This would take you to the upgrade flow (future feature).');
   };
+
+  const handleShowProFeatures = () => {
+    Alert.alert('Pro Features', 'Pro users can:\n\n- Create multiple schedules\n- Unlock future cloud sync\n- Access custom themes\n- Remove ads');
+  };
+
+  // 🔥 Dev-only toggle for switching Pro mode
+  const toggleDevProMode = () => {
+    setIsPro(!isPro);
+    Alert.alert('Dev Mode', `Pro mode is now ${!isPro ? 'ENABLED' : 'DISABLED'}.`);
+  };
+
+  const today = format(new Date(), 'EEE');
+  const activeSchedule = schedules.find((s) =>
+    s.selectedDays.includes(today)
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Header */}
-        <View style={styles.headerRow}>
-          <Pressable
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={28} color={theme.colors.text} />
-          </Pressable>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-            Settings
-          </Text>
-          <View style={{ width: 36 }} />
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={[styles.header, { color: theme.colors.text }]}>Settings</Text>
+
+        {/* Current Active Schedule */}
+        <View style={[styles.activeCard, { backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.activeTitle, { color: theme.colors.text }]}>Current Schedule</Text>
+          {activeSchedule ? (
+            <>
+              <Text style={[styles.activeName, { color: theme.colors.text }]}>
+                {activeSchedule.name}
+              </Text>
+              <Text style={[styles.activeDays, { color: theme.colors.text + 'AA' }]}>
+                {activeSchedule.selectedDays.join(', ')}
+              </Text>
+            </>
+          ) : (
+            <Text style={[styles.noActive, { color: theme.colors.text + 'AA' }]}>
+              No Active Schedule Today
+            </Text>
+          )}
         </View>
 
-        {/* Active Schedule */}
-        {todaySchedule && (
-          <View
-            style={[styles.activeCard, { backgroundColor: theme.colors.card }]}
-          >
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Today's Active Schedule
-            </Text>
-            <Text
-              style={[
-                styles.scheduleText,
-                { color: theme.colors.text, marginTop: 12 },
-              ]}
-            >
-              {todaySchedule.name}
-            </Text>
-          </View>
-        )}
+        {/* Schedules Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Schedules</Text>
 
-        {/* Saved Schedules */}
-        {schedules.length > 0 && (
-          <View style={styles.savedSchedulesSection}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              Saved Schedules
+          {schedules.length === 0 ? (
+            <Text style={[styles.emptyText, { color: theme.colors.text + '99' }]}>
+              No schedules yet.
             </Text>
-            {schedules.map((schedule) => (
+          ) : (
+            schedules.map((schedule) => (
               <View
                 key={schedule.id}
-                style={[
-                  styles.scheduleCard,
-                  { backgroundColor: theme.colors.card },
-                ]}
+                style={[styles.scheduleCard, { backgroundColor: theme.colors.card }]}
               >
-                <Text
-                  style={[styles.scheduleText, { color: theme.colors.text }]}
-                >
-                  {schedule.name}
-                </Text>
-                <View style={styles.buttonsRow}>
-                  <Pressable
-                    onPress={() => handleEdit(schedule)}
-                    style={[
-                      styles.iconButton,
-                      { backgroundColor: theme.colors.primary },
-                    ]}
-                  >
-                    <Ionicons
-                      name="pencil"
-                      size={20}
-                      color={theme.colors.background}
-                    />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => handleDelete(schedule.id)}
-                    style={[
-                      styles.iconButton,
-                      { backgroundColor: theme.colors.border },
-                    ]}
-                  >
-                    <Ionicons
-                      name="trash"
-                      size={20}
-                      color={theme.colors.text}
-                    />
-                  </Pressable>
+                <View style={styles.scheduleHeader}>
+                  <Text style={[styles.scheduleName, { color: theme.colors.text }]}>
+                    {schedule.name}
+                  </Text>
+
+                  <View style={styles.scheduleActions}>
+                    <Pressable onPress={() => handleEditSchedule(schedule)} style={styles.actionButton}>
+                      <Ionicons name="create-outline" size={20} color={theme.colors.text} />
+                    </Pressable>
+                    <Pressable onPress={() => handleDeleteSchedule(schedule)} style={styles.actionButton}>
+                      <Ionicons name="trash-outline" size={20} color="red" />
+                    </Pressable>
+                  </View>
                 </View>
+
+                <Text style={[styles.scheduleDays, { color: theme.colors.text }]}>
+                  {schedule.selectedDays.join(', ')}
+                </Text>
               </View>
-            ))}
-          </View>
-        )}
+            ))
+          )}
 
-        {/* Create New Schedule */}
-        {(isPro || schedules.length === 0) && (
-          <AppButton
-            title="Create New Schedule"
-            onPress={handleAddNew}
-            style={{ marginTop: 24 }}
-          />
-        )}
-
-        {/* Toggles */}
-        <View style={styles.settingRow}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            24-Hour Time
-          </Text>
-          <Switch
-            value={is24HourTime}
-            onValueChange={setIs24HourTime}
-            trackColor={{
-              false: theme.colors.border,
-              true: theme.colors.primary,
-            }}
-            thumbColor={theme.colors.thumb}
-          />
-        </View>
-
-        <View style={styles.settingRow}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>
-            Dark Mode
-          </Text>
-          <Switch
-            value={isDarkMode}
-            onValueChange={setIsDarkMode}
-            trackColor={{
-              false: theme.colors.border,
-              true: theme.colors.primary,
-            }}
-            thumbColor={theme.colors.thumb}
-          />
-        </View>
-        {/* Pro Debug Toggle - only show if in development */}
-        {__DEV__ && (
-          <View style={styles.settingRow}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              Pro Mode (Dev Only)
+          {isPro ? (
+            <AppButton
+              title="Create New Schedule"
+              onPress={handleCreateNewSchedule}
+              style={{ marginTop: 16 }}
+            />
+          ) : schedules.length === 0 ? (
+            <AppButton
+              title="Create Schedule"
+              onPress={handleCreateNewSchedule}
+              style={{ marginTop: 16 }}
+            />
+          ) : (
+            <Text style={[styles.lockedText, { color: theme.colors.text + '99' }]}>
+              Upgrade to Pro to create multiple schedules.
             </Text>
+          )}
+        </View>
+
+        {/* Appearance Settings */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Appearance</Text>
+
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Dark Mode</Text>
             <Switch
-              value={isPro}
-              onValueChange={setIsPro}
-              trackColor={{
-                false: theme.colors.border,
-                true: theme.colors.primary,
-              }}
-              thumbColor={theme.colors.thumb}
+              value={isDarkMode}
+              onValueChange={setIsDarkMode}
+              thumbColor={isDarkMode ? theme.colors.primary : '#ccc'}
             />
           </View>
+
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>24-Hour Time</Text>
+            <Switch
+              value={is24HourTime}
+              onValueChange={setIs24HourTime}
+              thumbColor={is24HourTime ? theme.colors.primary : '#ccc'}
+            />
+          </View>
+        </View>
+
+        {/* Pro Upgrade Section */}
+        {!isPro && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Go Pro</Text>
+            <AppButton title="Upgrade to Pro" onPress={handleUpgrade} style={{ marginBottom: 12 }} />
+            <AppButton title="View Pro Features" onPress={handleShowProFeatures} />
+          </View>
         )}
 
-        {/* Upgrade Button */}
-        {!isPro && <AppButton title="Upgrade to Pro" onPress={handleUpgrade} />}
+        {/* Dev-Only Pro Toggle */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Developer Tools</Text>
+          <AppButton
+            title={`Toggle Pro Mode (Currently ${isPro ? 'On' : 'Off'})`}
+            onPress={toggleDevProMode}
+            style={{ marginTop: 12 }}
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// --- Styles ---
-
 const styles = StyleSheet.create({
   container: {
-    marginTop: 36,
-    paddingHorizontal: 24,
-    alignItems: "stretch",
+    marginTop: 32,
+    padding: 24,
     paddingBottom: 48,
   },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    marginBottom: 24,
-  },
-  backButton: {
-    padding: 12,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
+  header: {
+    fontSize: 28,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 32,
   },
   activeCard: {
     padding: 20,
-    borderRadius: 12,
-    marginBottom: 24,
-    elevation: 2,
+    borderRadius: 16,
+    marginBottom: 32,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
   },
-  savedSchedulesSection: {
+  activeTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  activeName: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  activeDays: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  noActive: {
+    fontSize: 16,
+    fontStyle: 'italic',
+    marginTop: 8,
+  },
+  section: {
     marginBottom: 32,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 12,
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 16,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: 16,
   },
   scheduleCard: {
     padding: 16,
-    borderRadius: 10,
-    marginBottom: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    elevation: 1,
+    borderRadius: 12,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
   },
-  scheduleText: {
-    fontSize: 16,
-    fontWeight: "600",
-    flex: 1,
+  scheduleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  buttonsRow: {
-    flexDirection: "row",
-    marginLeft: 12,
-  },
-  iconButton: {
-    padding: 10,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-  settingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginVertical: 12,
-  },
-  label: {
+  scheduleName: {
     fontSize: 18,
+    fontWeight: '600',
+  },
+  scheduleActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    padding: 4,
+  },
+  scheduleDays: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  lockedText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
