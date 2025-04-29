@@ -1,113 +1,128 @@
 // screens/HomeScreen.js
 
 import React, { useEffect, useRef, useState } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, Pressable, Animated, Platform } from 'react-native';
+import { SafeAreaView, View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import CenteredView from '../components/CenteredView';
 import useTheme from '../hooks/useTheme';
 import { useSettings, useSchedules } from '../context/AppContext';
-import { format, parse, differenceInMinutes, isBefore, isAfter } from 'date-fns';
+import { format } from 'date-fns';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const theme = useTheme();
   const { is24HourTime } = useSettings();
-  const { schedules, activeScheduleId } = useSchedules();
-
+  const { schedules } = useSchedules();
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const bounceAnimTime = useRef(new Animated.Value(1)).current;
-  const bounceAnimPeriod = useRef(new Animated.Value(1)).current;
 
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [currentBlock, setCurrentBlock] = useState(null);
+  const [activeSchedule, setActiveSchedule] = useState(null);
+  const [currentBlock, setCurrentBlock] = useState('Loading...');
   const [minutesLeft, setMinutesLeft] = useState(null);
 
-  const activeSchedule = schedules.find(s => s.id === activeScheduleId);
-
+  // 🔥 Sync updates every new minute
   useEffect(() => {
     updateTime();
 
     const now = new Date();
     const msUntilNextMinute = (60 - now.getSeconds()) * 1000;
 
-    const timeoutId = setTimeout(() => {
+    const timeout = setTimeout(() => {
       updateTime();
-      intervalId = setInterval(updateTime, 60000);
+      const interval = setInterval(updateTime, 60000);
+      setUpdater(interval);
     }, msUntilNextMinute);
 
-    let intervalId;
+    let updater;
+    function setUpdater(interval) {
+      updater = interval;
+    }
 
     return () => {
-      clearTimeout(timeoutId);
-      clearInterval(intervalId);
+      clearTimeout(timeout);
+      clearInterval(updater);
     };
   }, []);
 
   const updateTime = () => {
     const now = new Date();
     setCurrentTime(now);
-    updateCurrentBlock(now);
+    findActiveSchedule(now);
   };
 
-  const updateCurrentBlock = (now) => {
-    if (!activeSchedule) {
-      setCurrentBlock('No Schedule');
-      setMinutesLeft(null);
-      return;
-    }
+  const findActiveSchedule = (now) => {
+    const today = format(now, 'EEE'); // "Mon", "Tue", etc.
 
-    const dayOfWeek = format(now, 'EEE');
-    if (!activeSchedule.selectedDays.includes(dayOfWeek)) {
-      setCurrentBlock('School Closed');
+    // Find the first schedule that matches today
+    const matchingSchedule = schedules.find((s) =>
+      s.selectedDays?.includes(today)
+    );
+
+    if (matchingSchedule) {
+      setActiveSchedule(matchingSchedule);
+      updateCurrentBlock(now, matchingSchedule);
+    } else {
+      setActiveSchedule(null);
+      setCurrentBlock("No Schedule Listed");
+      setMinutesLeft(null);
+    }
+  };
+
+  const updateCurrentBlock = (now, schedule) => {
+    if (!schedule) {
+      setCurrentBlock("No Schedule Listed");
       setMinutesLeft(null);
       return;
     }
 
     const allBlocks = [];
 
-    activeSchedule.periods.forEach(p => {
+    // Add periods
+    schedule.periods.forEach(p => {
       allBlocks.push({
         label: p.label,
-        start: parse(p.startTime, 'h:mm a', now),
-        end: parse(p.endTime, 'h:mm a', now),
+        start: parseTime(p.startTime, now),
+        end: parseTime(p.endTime, now),
       });
     });
 
-    if (activeSchedule.hasBreak) {
+    // Add break
+    if (schedule.hasBreak) {
       allBlocks.push({
         label: 'Break',
-        start: parse(activeSchedule.breakStartTime, 'h:mm a', now),
-        end: parse(activeSchedule.breakEndTime, 'h:mm a', now),
+        start: parseTime(schedule.breakStartTime, now),
+        end: parseTime(schedule.breakEndTime, now),
       });
     }
 
-    if (activeSchedule.hasLunch) {
+    // Add lunch
+    if (schedule.hasLunch) {
       allBlocks.push({
         label: 'Lunch',
-        start: parse(activeSchedule.lunchStartTime, 'h:mm a', now),
-        end: parse(activeSchedule.lunchEndTime, 'h:mm a', now),
+        start: parseTime(schedule.lunchStartTime, now),
+        end: parseTime(schedule.lunchEndTime, now),
       });
     }
 
+    // Sort all blocks
     allBlocks.sort((a, b) => a.start - b.start);
 
     let found = false;
 
     for (let i = 0; i < allBlocks.length; i++) {
       const block = allBlocks[i];
-      if (isAfter(now, block.start) && isBefore(now, block.end)) {
+      if (now >= block.start && now < block.end) {
         setCurrentBlock(block.label);
-        setMinutesLeft(differenceInMinutes(block.end, now));
+        setMinutesLeft(Math.floor((block.end - now) / (1000 * 60)));
         found = true;
         break;
       }
       if (i < allBlocks.length - 1) {
         const nextBlock = allBlocks[i + 1];
-        if (isAfter(now, block.end) && isBefore(nextBlock.start)) {
+        if (now >= block.end && now < nextBlock.start) {
           setCurrentBlock('Passing Time');
-          setMinutesLeft(differenceInMinutes(nextBlock.start, now));
+          setMinutesLeft(Math.floor((nextBlock.start - now) / (1000 * 60)));
           found = true;
           break;
         }
@@ -115,100 +130,84 @@ export default function HomeScreen() {
     }
 
     if (!found) {
-      if (isBefore(now, allBlocks[0].start)) {
+      if (now < allBlocks[0].start) {
         setCurrentBlock('Before School');
-        setMinutesLeft(differenceInMinutes(allBlocks[0].start, now));
-      } else if (isAfter(now, allBlocks[allBlocks.length - 1].end)) {
+        setMinutesLeft(Math.floor((allBlocks[0].start - now) / (1000 * 60)));
+      } else if (now > allBlocks[allBlocks.length - 1].end) {
         setCurrentBlock('School Closed');
         setMinutesLeft(null);
       }
     }
   };
 
+  const parseTime = (timeStr, referenceDate) => {
+    const [time, ampm] = timeStr.split(' ');
+    let [hour, minute] = time.split(':').map(Number);
+    if (ampm === 'PM' && hour !== 12) hour += 12;
+    if (ampm === 'AM' && hour === 12) hour = 0;
+
+    const newDate = new Date(referenceDate);
+    newDate.setHours(hour, minute, 0, 0);
+    return newDate;
+  };
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.9,
+      useNativeDriver: true,
+      speed: 50,
+      bounciness: 10,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 8,
+    }).start();
+  };
+
   const formattedTime = is24HourTime
     ? format(currentTime, 'HH:mm')
-    : format(currentTime, 'h:mm a');
+    : format(currentTime, 'hh:mm a');
 
-  const formattedDate = format(currentTime, 'EEEE, MMMM d'); // Monday, April 29
-
-  const handlePressTimeCard = () => {
-    Animated.sequence([
-      Animated.spring(bounceAnimTime, {
-        toValue: 0.95,
-        useNativeDriver: true,
-      }),
-      Animated.spring(bounceAnimTime, {
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const handlePressPeriodCard = () => {
-    Animated.sequence([
-      Animated.spring(bounceAnimPeriod, {
-        toValue: 0.95,
-        useNativeDriver: true,
-      }),
-      Animated.spring(bounceAnimPeriod, {
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  useEffect(() => {
-    if (minutesLeft !== null) {
-      Animated.sequence([
-        Animated.timing(fadeAnim, { toValue: 0.8, duration: 100, useNativeDriver: true }),
-        Animated.timing(fadeAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [minutesLeft]);
+  const formattedDate = format(currentTime, 'EEEE, MMMM d');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <CenteredView style={{ padding: 24 }}>
-
         {/* Cogwheel Button */}
         <Animated.View style={[styles.cogButton, { transform: [{ scale: scaleAnim }] }]}>
           <Pressable
             onPress={() => navigation.navigate('Settings')}
-            onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.9, useNativeDriver: true }).start()}
-            onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start()}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
             style={({ pressed }) => [
               styles.pressableArea,
               pressed && { opacity: 0.8 },
             ]}
-            accessibilityLabel="Settings"
-            accessibilityHint="Navigate to Settings Screen"
           >
             <Ionicons name="settings-outline" size={28} color={theme.colors.text} />
           </Pressable>
         </Animated.View>
 
-        {/* Time/Date Card */}
-        <Animated.View style={[styles.card, { backgroundColor: theme.colors.card, transform: [{ scale: bounceAnimTime }] }]}>
-          <Pressable onPress={handlePressTimeCard} style={{ alignItems: 'center' }}>
-            <Text style={[styles.timeText, { color: theme.colors.text }]}>{formattedTime}</Text>
-            <Text style={[styles.dateText, { color: theme.colors.text }]}>{formattedDate}</Text>
-          </Pressable>
-        </Animated.View>
+        {/* Time Card */}
+        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.timeText, { color: theme.colors.text }]}>{formattedTime}</Text>
+          <Text style={[styles.dateText, { color: theme.colors.text }]}>{formattedDate}</Text>
+        </View>
 
-        {/* Period/Countdown Card */}
-        <Animated.View style={[styles.card, { backgroundColor: theme.colors.card, transform: [{ scale: bounceAnimPeriod }] }]}>
-          <Pressable onPress={handlePressPeriodCard} style={{ alignItems: 'center' }}>
-            {currentBlock && (
-              <Text style={[styles.periodText, { color: theme.colors.text }]}>{currentBlock}</Text>
-            )}
-            {minutesLeft !== null && (
-              <Animated.Text style={[styles.countdownText, { color: theme.colors.text, opacity: fadeAnim }]}>
-                {minutesLeft} min left
-              </Animated.Text>
-            )}
-          </Pressable>
-        </Animated.View>
-
+        {/* Period Card */}
+        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.periodText, { color: theme.colors.text }]}>{currentBlock}</Text>
+          {minutesLeft !== null && (
+            <Text style={[styles.countdownText, { color: theme.colors.text }]}>
+              {minutesLeft} min left
+            </Text>
+          )}
+        </View>
       </CenteredView>
     </SafeAreaView>
   );
@@ -221,44 +220,36 @@ const styles = StyleSheet.create({
     right: 16,
   },
   pressableArea: {
-    padding: 12,
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
+    padding: 8,
   },
   card: {
     width: '100%',
     padding: 24,
     borderRadius: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 24,
+    marginVertical: 12,
+    elevation: 3,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
-    elevation: 3,
   },
   timeText: {
     fontSize: 48,
     fontWeight: 'bold',
     marginBottom: 8,
-    textAlign: 'center',
   },
   dateText: {
     fontSize: 18,
     opacity: 0.8,
-    textAlign: 'center',
   },
   periodText: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '600',
     marginBottom: 8,
-    textAlign: 'center',
   },
   countdownText: {
-    fontSize: 20,
-    textAlign: 'center',
+    fontSize: 18,
+    opacity: 0.7,
   },
 });
