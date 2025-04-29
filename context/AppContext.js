@@ -1,82 +1,124 @@
-// context/AppContext.js
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import React, { createContext, useContext, useState } from 'react';
+const SCHEDULES_KEY = '@schedules';
+const SETTINGS_KEY = '@settings';
 
-// Create the Context
-const AppContext = createContext();
+// --- SETTINGS CONTEXT --- //
+const SettingsContext = createContext();
 
-// Default Initial States
-const initialSettings = {
-  isDarkMode: false,
-  is24HourTime: false,
-};
+export const SettingsProvider = ({ children }) => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [is24HourTime, setIs24HourTime] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-const initialSchedules = {
-  schedules: [],          // list of schedules
-  activeScheduleId: null,  // which schedule is active
-};
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(SETTINGS_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setIsDarkMode(parsed.isDarkMode ?? false);
+          setIs24HourTime(parsed.is24HourTime ?? false);
+        }
+      } catch (e) {
+        console.warn('Failed to load settings:', e);
+      } finally {
+        setLoaded(true);
+      }
+    };
+    loadSettings();
+  }, []);
 
-const initialUser = {
-  isProUser: false,        // Pro status
-};
+  useEffect(() => {
+    if (!loaded) return;
+    const save = async () => {
+      try {
+        await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ isDarkMode, is24HourTime }));
+      } catch (e) {
+        console.warn('Failed to save settings:', e);
+      }
+    };
+    save();
+  }, [isDarkMode, is24HourTime, loaded]);
 
-// Provider
-export function AppProvider({ children }) {
-  const [settings, setSettings] = useState(initialSettings);
-  const [schedules, setSchedules] = useState(initialSchedules);
-  const [user, setUser] = useState(initialUser);
+  if (!loaded) return null;
 
   return (
-    <AppContext.Provider value={{ settings, setSettings, schedules, setSchedules, user, setUser }}>
+    <SettingsContext.Provider value={{ isDarkMode, setIsDarkMode, is24HourTime, setIs24HourTime }}>
       {children}
-    </AppContext.Provider>
+    </SettingsContext.Provider>
   );
-}
+};
 
-// Main Hook to Access Raw Context (internal use)
-export function useAppContext() {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useAppContext must be used within an AppProvider');
-  }
-  return context;
-}
+export const useSettings = () => useContext(SettingsContext);
 
-// --------
-// 📦 Custom Hooks (screens should mostly use these!)
-// --------
+// --- SCHEDULES CONTEXT --- //
+const SchedulesContext = createContext();
 
-export function useSettings() {
-  const { settings, setSettings } = useAppContext();
-  return {
-    ...settings,
-    setIsDarkMode: (value) => setSettings(prev => ({ ...prev, isDarkMode: value })),
-    setIs24HourTime: (value) => setSettings(prev => ({ ...prev, is24HourTime: value })),
+export const SchedulesProvider = ({ children }) => {
+  const [schedules, setSchedules] = useState([]);
+  const [activeScheduleId, setActiveScheduleId] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const loadSchedules = async () => {
+      try {
+        const saved = await AsyncStorage.getItem(SCHEDULES_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setSchedules(parsed.schedules ?? []);
+          setActiveScheduleId(parsed.activeScheduleId ?? null);
+        }
+      } catch (e) {
+        console.warn('Failed to load schedules:', e);
+      } finally {
+        setLoaded(true);
+      }
+    };
+    loadSchedules();
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const save = async () => {
+      try {
+        await AsyncStorage.setItem(SCHEDULES_KEY, JSON.stringify({ schedules, activeScheduleId }));
+      } catch (e) {
+        console.warn('Failed to save schedules:', e);
+      }
+    };
+    save();
+  }, [schedules, activeScheduleId, loaded]);
+
+  const addSchedule = (schedule) => {
+    setSchedules(prev => [...prev, schedule]);
+    setActiveScheduleId(schedule.id);
   };
-}
 
-export function useSchedules() {
-  const { schedules, setSchedules } = useAppContext();
-  return {
-    ...schedules,
-    addSchedule: (schedule) => setSchedules(prev => ({
-      schedules: [...prev.schedules, schedule],
-      activeScheduleId: schedule.id,
-    })),
-    deleteSchedule: (id) => setSchedules(prev => ({
-      schedules: prev.schedules.filter(s => s.id !== id),
-      activeScheduleId: prev.activeScheduleId === id ? null : prev.activeScheduleId,
-    })),
-    setActiveScheduleId: (id) => setSchedules(prev => ({ ...prev, activeScheduleId: id })),
-    clearAllSchedules: () => setSchedules(initialSchedules),
+  const deleteSchedule = (id) => {
+    setSchedules(prev => prev.filter(s => s.id !== id));
+    if (id === activeScheduleId) {
+      setActiveScheduleId(null);
+    }
   };
-}
 
-export function useUser() {
-  const { user, setUser } = useAppContext();
-  return {
-    ...user,
-    upgradeToPro: () => setUser(prev => ({ ...prev, isProUser: true })),
-    downgradeToFree: () => setUser(prev => ({ ...prev, isProUser: false })),
-  };
-}
+  if (!loaded) return null;
+
+  return (
+    <SchedulesContext.Provider value={{ schedules, addSchedule, deleteSchedule, activeScheduleId, setActiveScheduleId }}>
+      {children}
+    </SchedulesContext.Provider>
+  );
+};
+
+export const useSchedules = () => useContext(SchedulesContext);
+
+// --- COMBINED PROVIDER --- //
+export const AppProvider = ({ children }) => (
+  <SettingsProvider>
+    <SchedulesProvider>
+      {children}
+    </SchedulesProvider>
+  </SettingsProvider>
+);
