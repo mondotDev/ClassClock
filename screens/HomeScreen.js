@@ -13,7 +13,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const theme = useTheme();
   const { is24HourTime } = useSettings();
-  const { schedules } = useSchedules();
+  const { schedules, schedulesLoaded, hasOnboarded } = useSchedules();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -21,7 +21,19 @@ export default function HomeScreen() {
   const [currentBlock, setCurrentBlock] = useState('Loading...');
   const [minutesLeft, setMinutesLeft] = useState(null);
 
-  // 🔥 Sync updates every new minute
+  // 🔥 NEW: Redirect to onboarding if necessary
+  useEffect(() => {
+    if (schedulesLoaded && schedules.length === 0 && !hasOnboarded) {
+      const timeout = setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'ScheduleName' }],
+        });
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [schedules, schedulesLoaded, hasOnboarded]);
+
   useEffect(() => {
     updateTime();
 
@@ -54,7 +66,6 @@ export default function HomeScreen() {
   const findActiveSchedule = (now) => {
     const today = format(now, 'EEE'); // "Mon", "Tue", etc.
 
-    // Find the first schedule that matches today
     const matchingSchedule = schedules.find((s) =>
       s.selectedDays?.includes(today)
     );
@@ -78,7 +89,6 @@ export default function HomeScreen() {
 
     const allBlocks = [];
 
-    // Add periods
     schedule.periods.forEach(p => {
       allBlocks.push({
         label: p.label,
@@ -87,7 +97,6 @@ export default function HomeScreen() {
       });
     });
 
-    // Add break
     if (schedule.hasBreak) {
       allBlocks.push({
         label: 'Break',
@@ -96,7 +105,6 @@ export default function HomeScreen() {
       });
     }
 
-    // Add lunch
     if (schedule.hasLunch) {
       allBlocks.push({
         label: 'Lunch',
@@ -105,7 +113,6 @@ export default function HomeScreen() {
       });
     }
 
-    // Sort all blocks
     allBlocks.sort((a, b) => a.start - b.start);
 
     let found = false;
