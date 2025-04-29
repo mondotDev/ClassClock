@@ -56,7 +56,6 @@ export default function SettingsScreen() {
     Alert.alert('Pro Features', 'Pro users can:\n\n- Create multiple schedules\n- Unlock future cloud sync\n- Access custom themes\n- Remove ads');
   };
 
-  // 🔥 Dev-only toggle for switching Pro mode
   const toggleDevProMode = () => {
     setIsPro(!isPro);
     Alert.alert('Dev Mode', `Pro mode is now ${!isPro ? 'ENABLED' : 'DISABLED'}.`);
@@ -70,6 +69,20 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView contentContainerStyle={styles.container}>
+        {/* Back Button */}
+        <View style={styles.backButtonContainer}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={({ pressed }) => [
+              styles.backButton,
+              pressed && { opacity: 0.6 },
+            ]}
+          >
+            <Ionicons name="arrow-back" size={28} color={theme.colors.text} />
+          </Pressable>
+        </View>
+
+        {/* Header */}
         <Text style={[styles.header, { color: theme.colors.text }]}>Settings</Text>
 
         {/* Current Active Schedule */}
@@ -197,6 +210,15 @@ const styles = StyleSheet.create({
     marginTop: 32,
     padding: 24,
     paddingBottom: 48,
+  },
+  backButtonContainer: {
+    position: 'absolute',
+    top: 12,
+    left: 16,
+    zIndex: 10,
+  },
+  backButton: {
+    padding: 8,
   },
   header: {
     fontSize: 28,

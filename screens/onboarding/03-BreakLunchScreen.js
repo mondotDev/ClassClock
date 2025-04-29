@@ -183,6 +183,7 @@ export default function BreakLunchScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: 32,
     padding: 24,
   },
   title: {
