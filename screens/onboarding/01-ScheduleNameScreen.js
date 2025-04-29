@@ -1,39 +1,21 @@
-// screens/onboarding/00-ScheduleNameScreen.js
+import React, { useState } from 'react';
+import { SafeAreaView, View, Text, TextInput, StyleSheet, Switch, Pressable } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import AppButton from '../../components/AppButton';
+import { useSchedules } from '../../context/AppContext';
+import useTheme from '../../hooks/useTheme';
+import Toast from 'react-native-toast-message';
 
-import React, { useEffect, useState } from "react";
-import {
-  SafeAreaView,
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Switch,
-} from "react-native";
-import AppButton from "../../components/AppButton";
-import useTheme from "../../hooks/useTheme";
+const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-
-export default function ScheduleNameScreen({ navigation, route }) {
-  const theme = useTheme();
-  const { edit = false, existingSchedule = null } = route.params || {};
-
-  const [scheduleName, setScheduleName] = useState("");
+export default function ScheduleNameScreen() {
+  const [scheduleName, setScheduleName] = useState('');
   const [selectedDays, setSelectedDays] = useState([]);
-  const [hasZero, setHasZero] = useState(false);
-  const [periodCount, setPeriodCount] = useState("6");
-
-  useEffect(() => {
-    if (edit && existingSchedule) {
-      setScheduleName(existingSchedule.name || "");
-      setSelectedDays(existingSchedule.selectedDays || []);
-      setHasZero(existingSchedule.hasZero || false);
-      setPeriodCount(existingSchedule.count?.toString() || "6");
-    }
-  }, [edit, existingSchedule]);
+  const [hasZeroPeriod, setHasZeroPeriod] = useState(false);
+  const [numPeriods, setNumPeriods] = useState(6);
+  const navigation = useNavigation();
+  const theme = useTheme();
+  const { schedules } = useSchedules();
 
   const toggleDay = (day) => {
     setSelectedDays((prev) =>
@@ -41,108 +23,132 @@ export default function ScheduleNameScreen({ navigation, route }) {
     );
   };
 
+  const incrementPeriods = () => {
+    if (numPeriods < 12) setNumPeriods((prev) => prev + 1);
+  };
+
+  const decrementPeriods = () => {
+    if (numPeriods > 1) setNumPeriods((prev) => prev - 1);
+  };
+
   const handleNext = () => {
-    navigation.navigate("PeriodTimes", {
-      edit,
-      existingSchedule,
-      name: scheduleName.trim(),
+    const trimmedName = scheduleName.trim();
+    if (!trimmedName) {
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Name',
+        text2: 'Please enter a schedule name.',
+        position: 'top',
+      });
+      return;
+    }
+
+    const duplicate = schedules.some(
+      (s) => s.name.trim().toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (duplicate) {
+      Toast.show({
+        type: 'error',
+        text1: 'Duplicate Name',
+        text2: 'A schedule with that name already exists.',
+        position: 'top',
+      });
+      return;
+    }
+
+    if (selectedDays.length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Select Days',
+        text2: 'Please select at least one day for this schedule.',
+        position: 'top',
+      });
+      return;
+    }
+
+    // Pass all collected data forward
+    navigation.navigate('PeriodTimes', {
+      scheduleName: trimmedName,
       selectedDays,
-      hasZero,
-      count: periodCount,
+      hasZeroPeriod,
+      numPeriods,
     });
   };
 
-  const isNextDisabled = scheduleName.trim().length === 0 || selectedDays.length === 0;
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ flex: 1 }}
-      >
-        <View style={styles.container}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>  
-            {edit ? "Edit Schedule Name" : "Name Your Schedule"}
-          </Text>
+      <View style={styles.container}>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Name Your Schedule</Text>
 
-          <TextInput
-            value={scheduleName}
-            onChangeText={setScheduleName}
-            placeholder="Enter schedule name"
-            placeholderTextColor={theme.colors.border}
-            style={[
-              styles.input,
-              {
-                backgroundColor: theme.colors.card,
-                color: theme.colors.text,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          />
+        <TextInput
+          style={[styles.input, { backgroundColor: theme.colors.card, color: theme.colors.text }]}
+          value={scheduleName}
+          onChangeText={setScheduleName}
+          placeholder="Enter schedule name"
+          placeholderTextColor={theme.colors.text + '80'}
+        />
 
-          <Text style={[styles.subLabel, { color: theme.colors.text }]}>Select Days:</Text>
-          <View style={styles.chipContainer}>
-            {DAY_LABELS.map((day) => {
-              const selected = selectedDays.includes(day);
-              return (
-                <Pressable
-                  key={day}
-                  onPress={() => toggleDay(day)}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: selected
-                        ? theme.colors.primary
-                        : theme.colors.card,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: selected ? theme.colors.background : theme.colors.text,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {day}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+        {/* Days of the Week Chips */}
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select Days</Text>
+        <View style={styles.chipContainer}>
+          {daysOfWeek.map((day) => (
+            <Pressable
+              key={day}
+              onPress={() => toggleDay(day)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: selectedDays.includes(day)
+                    ? theme.colors.primary
+                    : theme.colors.card,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: selectedDays.includes(day) ? 'white' : theme.colors.text,
+                  fontWeight: '600',
+                }}
+              >
+                {day}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
 
-          {/* Zero Period Toggle */}
-          <View style={styles.toggleRow}>
-            <Text style={[styles.subLabel, { color: theme.colors.text }]}>Start with Zero Period?</Text>
-            <Switch
-              value={hasZero}
-              onValueChange={setHasZero}
-              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-              thumbColor={theme.colors.thumb}
-            />
-          </View>
-
-          {/* Period Count Input */}
-          <View style={styles.periodCountRow}>
-            <Text style={[styles.subLabel, { color: theme.colors.text }]}>Number of Periods:</Text>
-            <TextInput
-              value={periodCount}
-              onChangeText={setPeriodCount}
-              placeholder="6"
-              keyboardType="numeric"
-              style={[styles.periodInput, { backgroundColor: theme.colors.card, color: theme.colors.text, borderColor: theme.colors.border }]}
-              placeholderTextColor={theme.colors.border}
-            />
-          </View>
-
-          <AppButton
-            title="Next"
-            onPress={handleNext}
-            disabled={isNextDisabled}
-            style={{ marginTop: 32 }}
+        {/* Zero Period Switch */}
+        <View style={styles.row}>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Zero Period</Text>
+          <Switch
+            value={hasZeroPeriod}
+            onValueChange={setHasZeroPeriod}
+            thumbColor={hasZeroPeriod ? theme.colors.primary : '#ccc'}
           />
         </View>
-      </KeyboardAvoidingView>
+
+        {/* Number of Periods Stepper */}
+        <View style={styles.row}>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Periods: {numPeriods}</Text>
+          <View style={styles.stepper}>
+            <Pressable
+              style={[styles.stepButton, { backgroundColor: theme.colors.card }]}
+              onPress={decrementPeriods}
+            >
+              <Text style={[styles.stepText, { color: theme.colors.text }]}>-</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.stepButton, { backgroundColor: theme.colors.card }]}
+              onPress={incrementPeriods}
+            >
+              <Text style={[styles.stepText, { color: theme.colors.text }]}>+</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Next Button */}
+        <AppButton title="Next" onPress={handleNext} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -150,58 +156,67 @@ export default function ScheduleNameScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: 48,
-    paddingHorizontal: 24,
-    alignItems: "stretch",
+    padding: 24,
   },
   title: {
     fontSize: 24,
-    fontWeight: "700",
-    marginBottom: 24,
-    textAlign: "center",
+    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 16,
+    height: 50,
+    borderRadius: 8,
+    paddingHorizontal: 16,
     fontSize: 18,
     marginBottom: 24,
   },
-  subLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 12,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '500',
+    marginBottom: 8,
   },
   chipContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     marginBottom: 24,
   },
   chip: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
     borderWidth: 1,
+    borderColor: '#ccc',
   },
-  toggleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 24,
   },
-  periodCountRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  periodInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
+  label: {
     fontSize: 18,
-    width: 80,
-    textAlign: "center",
+  },
+  stepper: {
+    flexDirection: 'row',
+  },
+  stepButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+  },
+  stepText: {
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 });

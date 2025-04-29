@@ -1,3 +1,4 @@
+// App.js
 import React, { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
 import { ActionSheetProvider } from "@expo/react-native-action-sheet";
@@ -6,8 +7,9 @@ import * as Font from "expo-font";
 
 import { AppProvider } from "./context/AppContext";
 import MainNavigator from "./navigation/MainNavigator";
+import Toast from "react-native-toast-message";
 
-SplashScreen.preventAutoHideAsync(); // Tell Expo to keep splash visible
+SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
@@ -15,7 +17,6 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Pre-load fonts
         await Font.loadAsync({
           "Roboto-Regular": require("./assets/fonts/Roboto-Regular.ttf"),
           "Roboto-Bold": require("./assets/fonts/Roboto-Bold.ttf"),
@@ -23,7 +24,7 @@ export default function App() {
       } catch (e) {
         console.warn(e);
       } finally {
-        setAppIsReady(true); // App is ready!
+        setAppIsReady(true);
       }
     }
 
@@ -32,19 +33,23 @@ export default function App() {
 
   const onLayoutRootView = useCallback(async () => {
     if (appIsReady) {
-      await SplashScreen.hideAsync(); // Hide splash after app is ready
+      await SplashScreen.hideAsync();
     }
   }, [appIsReady]);
 
   if (!appIsReady) {
-    return null; // While loading, show nothing (keeps splash up)
+    return null;
   }
 
   return (
     <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <AppProvider>
         <ActionSheetProvider>
-          <MainNavigator />
+          {/* 🔥 Wrap MainNavigator + Toast inside a fragment <> </> */}
+          <>
+            <MainNavigator />
+            <Toast />
+          </>
         </ActionSheetProvider>
       </AppProvider>
     </View>

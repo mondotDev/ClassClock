@@ -1,5 +1,3 @@
-// screens/onboarding/04-ReviewScheduleScreen.js
-
 import React from "react";
 import { SafeAreaView, ScrollView, View, Text, StyleSheet, Platform, ToastAndroid, Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
@@ -7,12 +5,15 @@ import AppButton from "../../components/AppButton";
 import useTheme from "../../hooks/useTheme";
 import { useSchedules } from "../../context/AppContext";
 
+
 export default function ReviewScheduleScreen({ route }) {
+  console.log('ReviewScreen params:', route.params);
+
   const {
-    name,
+    scheduleName,
     selectedDays,
-    hasZero,
-    count,
+    hasZeroPeriod,
+    numPeriods,
     periods,
     hasBreak,
     breakStartTime,
@@ -31,10 +32,10 @@ export default function ReviewScheduleScreen({ route }) {
   const handleSave = () => {
     const scheduleData = {
       id: edit && existingSchedule ? existingSchedule.id : Date.now().toString(),
-      name,
+      name: scheduleName,
       selectedDays,
-      hasZero,
-      count, // ✅ Ensure this is included
+      hasZeroPeriod,
+      numPeriods,
       periods,
       hasBreak,
       breakStartTime,
@@ -73,7 +74,7 @@ export default function ReviewScheduleScreen({ route }) {
           {/* Schedule Basic Info */}
           <View style={styles.section}>
             <Text style={[styles.label, { color: theme.colors.text }]}>Schedule Name</Text>
-            <Text style={[styles.value, { color: theme.colors.text }]}>{name}</Text>
+            <Text style={[styles.value, { color: theme.colors.text }]}>{scheduleName}</Text>
           </View>
 
           {/* Selected Days */}
@@ -94,9 +95,9 @@ export default function ReviewScheduleScreen({ route }) {
             {periods.map((p, idx) => {
               const safeLabel = p.label.trim().length > 0
                 ? p.label
-                : hasZero && idx === 0
+                : hasZeroPeriod && idx === 0
                 ? "Zero Period"
-                : `Period ${hasZero ? idx : idx + 1}`;
+                : `Period ${hasZeroPeriod ? idx : idx + 1}`;
 
               return (
                 <View key={idx} style={styles.periodRow}>

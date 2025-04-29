@@ -1,5 +1,3 @@
-// screens/onboarding/02-PeriodTimesScreen.js
-
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, View, Text, StyleSheet, Pressable, TextInput, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -8,22 +6,22 @@ import useTheme from '../../hooks/useTheme';
 import { format } from 'date-fns';
 
 export default function PeriodTimesScreen({ navigation, route }) {
-  const { name, selectedDays, hasZero, count, edit = false, existingSchedule = null } = route.params;
-  const periodCount = Number(count);
-  const total = periodCount + (hasZero ? 1 : 0);
+  const { scheduleName, selectedDays, hasZeroPeriod, numPeriods, edit = false, existingSchedule = null } = route.params;
+  const periodCount = Number(numPeriods);
+  const total = periodCount + (hasZeroPeriod ? 1 : 0);
 
   const { colors } = useTheme();
 
   const [periods, setPeriods] = useState(() => {
     if (edit && existingSchedule && existingSchedule.periods) {
       return existingSchedule.periods.map((p, i) => ({
-        label: p.label || (hasZero ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`),
+        label: p.label || (hasZeroPeriod ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`),
         startTime: parseTime(p.startTime),
         endTime: parseTime(p.endTime),
       }));
     } else {
       return Array.from({ length: total }, (_, i) => ({
-        label: hasZero ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`,
+        label: hasZeroPeriod ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`,
         startTime: new Date(),
         endTime: new Date(),
       }));
@@ -73,10 +71,10 @@ export default function PeriodTimesScreen({ navigation, route }) {
     }));
 
     navigation.navigate('BreakLunch', {
-      name,
+      scheduleName,
       selectedDays,
-      hasZero,
-      count,
+      hasZeroPeriod,
+      numPeriods,
       periods: finalPeriods,
       edit,
       existingSchedule,
@@ -88,8 +86,8 @@ export default function PeriodTimesScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {periods.map((p, idx) => (
           <View key={idx} style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.periodLabel, { color: colors.text }]}>  
-              {hasZero && idx === 0 ? "Zero Period" : `Period ${hasZero ? idx : idx + 1}`}
+            <Text style={[styles.periodLabel, { color: colors.text }]}>
+              {hasZeroPeriod && idx === 0 ? "Zero Period" : `Period ${hasZeroPeriod ? idx : idx + 1}`}
             </Text>
 
             <TextInput
@@ -105,7 +103,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
                 style={[styles.timeButton, { backgroundColor: colors.primary }]}
                 onPress={() => openTimePicker(idx, 'start')}
               >
-                <Text style={[styles.timeButtonText, { color: colors.background }]}>  
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>
                   Start: {format(p.startTime, 'h:mm a')}
                 </Text>
               </Pressable>
@@ -114,7 +112,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
                 style={[styles.timeButton, { backgroundColor: colors.primary }]}
                 onPress={() => openTimePicker(idx, 'end')}
               >
-                <Text style={[styles.timeButtonText, { color: colors.background }]}>  
+                <Text style={[styles.timeButtonText, { color: colors.background }]}>
                   End: {format(p.endTime, 'h:mm a')}
                 </Text>
               </Pressable>
