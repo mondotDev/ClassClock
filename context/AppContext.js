@@ -12,7 +12,7 @@ export function AppProvider({ children }) {
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [is24HourTime, setIs24HourTime] = useState(false);
-  const [isPro, setIsPro] = useState(true); // 🔥 You can default to false if you want to simulate free user
+  const [isPro, setIsPro] = useState(true); // Default true for development - can set to false to simulate free
 
   useEffect(() => {
     const loadData = async () => {
@@ -75,7 +75,7 @@ export function AppProvider({ children }) {
         updateSchedule,
         setActiveScheduleId,
         isPro,
-        setIsPro, // now you can change it dynamically later
+        setIsPro, // ✅ Added properly here
       }}
     >
       <SettingsContext.Provider
