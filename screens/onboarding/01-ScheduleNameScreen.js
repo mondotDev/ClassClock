@@ -26,7 +26,7 @@ export default function ScheduleNameScreen({ route }) {
     edit = false,
     existingSchedule = null,
   } = params || {};
-  console.log("ScheduleNameScreen route.params:", route.params);
+  // console.log("ScheduleNameScreen route.params:", route.params);
 
   const [scheduleName, setScheduleName] = useState(initialName);
   const [selectedDays, setSelectedDays] = useState(initialDays);
