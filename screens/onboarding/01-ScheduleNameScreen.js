@@ -15,7 +15,8 @@ import { useSchedules } from '../../context/AppContext';
 import useTheme from '../../hooks/useTheme';
 import Toast from 'react-native-toast-message';
 
-const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const weekends = ['Sat', 'Sun'];
 
 export default function ScheduleNameScreen({ route }) {
   const { params } = route || {};
@@ -111,6 +112,30 @@ export default function ScheduleNameScreen({ route }) {
     });
   };
 
+  const renderChip = (day) => (
+    <Pressable
+      key={day}
+      onPress={() => toggleDay(day)}
+      style={[
+        styles.chip,
+        {
+          backgroundColor: selectedDays.includes(day)
+            ? theme.colors.primary
+            : theme.colors.card,
+        },
+      ]}
+    >
+      <Text
+        style={{
+          color: selectedDays.includes(day) ? 'white' : theme.colors.text,
+          fontWeight: '600',
+        }}
+      >
+        {day}
+      </Text>
+    </Pressable>
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <View style={styles.container}>
@@ -131,33 +156,8 @@ export default function ScheduleNameScreen({ route }) {
         />
 
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select Days</Text>
-        <View style={styles.chipContainer}>
-          {daysOfWeek.map((day) => (
-            <Pressable
-              key={day}
-              onPress={() => toggleDay(day)}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: selectedDays.includes(day)
-                    ? theme.colors.primary
-                    : theme.colors.card,
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  color: selectedDays.includes(day)
-                    ? 'white'
-                    : theme.colors.text,
-                  fontWeight: '600',
-                }}
-              >
-                {day}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <View style={styles.chipRow}>{weekdays.map(renderChip)}</View>
+        <View style={styles.chipRow}>{weekends.map(renderChip)}</View>
 
         <View style={styles.row}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Zero Period</Text>
@@ -216,17 +216,16 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginBottom: 8,
   },
-  chipContainer: {
+  chipRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 24,
+    justifyContent: 'center',
+    marginBottom: 8,
+    gap: 8,
   },
   chip: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#ccc',
   },
