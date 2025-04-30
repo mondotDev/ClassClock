@@ -26,7 +26,6 @@ export default function ScheduleNameScreen({ route }) {
     edit = false,
     existingSchedule = null,
   } = params || {};
-  // console.log("ScheduleNameScreen route.params:", route.params);
 
   const [scheduleName, setScheduleName] = useState(initialName);
   const [selectedDays, setSelectedDays] = useState(initialDays);
@@ -63,7 +62,6 @@ export default function ScheduleNameScreen({ route }) {
       return;
     }
 
-    // 🔥 Only check for duplicates if NOT editing
     if (!edit) {
       const duplicate = schedules.some(
         (s) => s.name.trim().toLowerCase() === trimmedName.toLowerCase()
@@ -90,7 +88,6 @@ export default function ScheduleNameScreen({ route }) {
       return;
     }
 
-    // Pass all collected data forward
     navigation.navigate("PeriodTimes", {
       scheduleName: trimmedName,
       selectedDays,
@@ -111,7 +108,10 @@ export default function ScheduleNameScreen({ route }) {
         <TextInput
           style={[
             styles.input,
-            { backgroundColor: theme.colors.card, color: theme.colors.text },
+            {
+              backgroundColor: theme.colors.card,
+              color: theme.colors.text,
+            },
           ]}
           value={scheduleName}
           onChangeText={setScheduleName}
@@ -119,7 +119,6 @@ export default function ScheduleNameScreen({ route }) {
           placeholderTextColor={theme.colors.text + "80"}
         />
 
-        {/* Days of the Week Chips */}
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
           Select Days
         </Text>
@@ -151,7 +150,6 @@ export default function ScheduleNameScreen({ route }) {
           ))}
         </View>
 
-        {/* Zero Period Switch */}
         <View style={styles.row}>
           <Text style={[styles.label, { color: theme.colors.text }]}>
             Zero Period
@@ -163,7 +161,6 @@ export default function ScheduleNameScreen({ route }) {
           />
         </View>
 
-        {/* Number of Periods Stepper */}
         <View style={styles.row}>
           <Text style={[styles.label, { color: theme.colors.text }]}>
             Periods: {numPeriods}
@@ -194,7 +191,6 @@ export default function ScheduleNameScreen({ route }) {
           </View>
         </View>
 
-        {/* Next Button */}
         <AppButton title="Next" onPress={handleNext} />
       </View>
     </SafeAreaView>

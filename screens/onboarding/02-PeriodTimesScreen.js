@@ -1,38 +1,74 @@
-import React, { useEffect, useState } from 'react';
-import { SafeAreaView, ScrollView, View, Text, StyleSheet, Pressable, TextInput, Platform } from 'react-native';
+// screens/onboarding/02-PeriodTimesScreen.js
+
+import React, { useState } from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  Platform,
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AppButton from '../../components/AppButton';
 import useTheme from '../../hooks/useTheme';
 import { format } from 'date-fns';
 
 export default function PeriodTimesScreen({ navigation, route }) {
-  const { scheduleName, selectedDays, hasZeroPeriod, numPeriods, edit = false, existingSchedule = null } = route.params;
-  const periodCount = Number(numPeriods);
-  const total = periodCount + (hasZeroPeriod ? 1 : 0);
+  const {
+    scheduleName,
+    selectedDays,
+    hasZeroPeriod,
+    numPeriods,
+    edit = false,
+    existingSchedule = null,
+  } = route.params;
 
   const { colors } = useTheme();
+  const total = numPeriods + (hasZeroPeriod ? 1 : 0);
+
+  const generateDefaultPeriods = () => {
+    const base = new Date();
+    base.setHours(8, 30, 0, 0); // Start at 8:30 AM
+
+    return Array.from({ length: total }, (_, i) => {
+      const start = new Date(base.getTime() + i * 50 * 60000);
+      const end = new Date(start.getTime() + 50 * 60000);
+      return {
+        label: hasZeroPeriod && i === 0 ? 'Zero Period' : `Period ${hasZeroPeriod ? i : i + 1}`,
+        startTime: start,
+        endTime: end,
+      };
+    });
+  };
 
   const [periods, setPeriods] = useState(() => {
-    if (edit && existingSchedule && existingSchedule.periods) {
+    if (edit && existingSchedule?.periods?.length) {
       return existingSchedule.periods.map((p, i) => ({
-        label: p.label || (hasZeroPeriod ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`),
+        label: p.label || (hasZeroPeriod && i === 0 ? 'Zero Period' : `Period ${i + 1}`),
         startTime: parseTime(p.startTime),
         endTime: parseTime(p.endTime),
       }));
     } else {
-      return Array.from({ length: total }, (_, i) => ({
-        label: hasZeroPeriod ? (i === 0 ? 'Zero Period' : `Period ${i}`) : `Period ${i + 1}`,
-        startTime: new Date(),
-        endTime: new Date(),
-      }));
+      return generateDefaultPeriods();
     }
   });
 
   const [pickerState, setPickerState] = useState({
     isVisible: false,
     mode: 'time',
-    field: null, // { idx, type: 'start' or 'end' }
+    field: null,
   });
+
+  const openTimePicker = (idx, type) => {
+    setPickerState({
+      isVisible: true,
+      mode: 'time',
+      field: { idx, type },
+    });
+  };
 
   const handleTimeChange = (event, selectedTime) => {
     if (event.type === 'dismissed' || !selectedTime) {
@@ -45,14 +81,6 @@ export default function PeriodTimesScreen({ navigation, route }) {
     updated[idx][type === 'start' ? 'startTime' : 'endTime'] = selectedTime;
     setPeriods(updated);
     setPickerState({ isVisible: false, mode: 'time', field: null });
-  };
-
-  const openTimePicker = (idx, type) => {
-    setPickerState({
-      isVisible: true,
-      mode: 'time',
-      field: { idx, type },
-    });
   };
 
   const handleLabelChange = (idx, text) => {
@@ -71,10 +99,10 @@ export default function PeriodTimesScreen({ navigation, route }) {
     }));
 
     navigation.navigate('BreakLunch', {
-      scheduleName,
+      scheduleName,           // ✅ Fixed
       selectedDays,
-      hasZeroPeriod,
-      numPeriods,
+      hasZeroPeriod,          // ✅ Fixed
+      numPeriods,             // ✅ Fixed
       periods: finalPeriods,
       edit,
       existingSchedule,
@@ -83,11 +111,11 @@ export default function PeriodTimesScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.container}>
         {periods.map((p, idx) => (
           <View key={idx} style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.periodLabel, { color: colors.text }]}>
-              {hasZeroPeriod && idx === 0 ? "Zero Period" : `Period ${hasZeroPeriod ? idx : idx + 1}`}
+              {p.label}
             </Text>
 
             <TextInput
@@ -134,7 +162,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
                 ? periods[pickerState.field.idx].startTime
                 : periods[pickerState.field.idx].endTime
             }
-            mode={pickerState.mode}
+            mode="time"
             is24Hour={false}
             display={Platform.OS === 'ios' ? 'spinner' : 'default'}
             onChange={handleTimeChange}
@@ -166,12 +194,12 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 36,
     padding: 24,
-    alignItems: 'stretch',
+    paddingBottom: 48,
   },
   card: {
     padding: 20,
     borderRadius: 12,
-    marginBottom: 24,
+    marginBottom: 36,
     elevation: 3,
     shadowColor: '#000',
     shadowOpacity: 0.05,
@@ -179,27 +207,28 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   periodLabel: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderRadius: 10,
+    paddingVertical: 12,
     paddingHorizontal: 14,
     fontSize: 16,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   timeRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
     justifyContent: 'space-between',
-    gap: 12,
   },
   timeButton: {
-    flex: 1,
-    paddingVertical: 12,
+    flexBasis: '48%',
+    paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',

@@ -29,7 +29,7 @@ export default function BreakLunchScreen({ navigation, route }) {
   const [pickerState, setPickerState] = useState({
     isVisible: false,
     mode: 'time',
-    field: null, // 'breakStart', 'breakEnd', 'lunchStart', 'lunchEnd'
+    field: null,
   });
 
   const openTimePicker = (field) => {
@@ -74,9 +74,9 @@ export default function BreakLunchScreen({ navigation, route }) {
       numPeriods,
       periods,
       hasBreak,
+      hasLunch,
       breakStartTime: format(breakStartTime, 'h:mm a'),
       breakEndTime: format(breakEndTime, 'h:mm a'),
-      hasLunch,
       lunchStartTime: format(lunchStartTime, 'h:mm a'),
       lunchEndTime: format(lunchEndTime, 'h:mm a'),
       edit,

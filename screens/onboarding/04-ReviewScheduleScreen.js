@@ -1,13 +1,14 @@
-import React from "react";
-import { SafeAreaView, ScrollView, View, Text, StyleSheet, Platform, ToastAndroid, Alert } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import AppButton from "../../components/AppButton";
-import useTheme from "../../hooks/useTheme";
-import { useSchedules } from "../../context/AppContext";
+// screens/onboarding/04-ReviewScheduleScreen.js
 
+import React from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { useSchedules } from '../../context/AppContext';
+import AppButton from '../../components/AppButton';
+import useTheme from '../../hooks/useTheme';
 
-export default function ReviewScheduleScreen({ route }) {
-  // console.log('ReviewScreen params:', route.params);
+export default function ReviewScheduleScreen({ route, navigation }) {
+  const { addSchedule, updateSchedule } = useSchedules();
+  const { colors } = useTheme();
 
   const {
     scheduleName,
@@ -23,14 +24,18 @@ export default function ReviewScheduleScreen({ route }) {
     lunchEndTime,
     edit = false,
     existingSchedule = null,
-  } = route.params;
+  } = route.params || {};
 
-  const navigation = useNavigation();
-  const theme = useTheme();
-  const { addSchedule, updateSchedule } = useSchedules();
+  if (!scheduleName || !Array.isArray(periods)) {
+    return (
+      <View style={styles.centered}>
+        <Text style={{ color: colors.text }}>No schedule found.</Text>
+      </View>
+    );
+  }
 
   const handleSave = () => {
-    const scheduleData = {
+    const newSchedule = {
       id: edit && existingSchedule ? existingSchedule.id : Date.now().toString(),
       name: scheduleName,
       selectedDays,
@@ -46,192 +51,81 @@ export default function ReviewScheduleScreen({ route }) {
     };
 
     if (edit && existingSchedule) {
-      updateSchedule(scheduleData);
+      updateSchedule(newSchedule);
     } else {
-      addSchedule(scheduleData);
+      addSchedule(newSchedule);
     }
 
-    if (Platform.OS === 'android') {
-      ToastAndroid.show('Schedule Saved!', ToastAndroid.SHORT);
-    } else {
-      Alert.alert('Success', 'Schedule Saved!');
-    }
-
-    setTimeout(() => {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Home" }],
-      });
-    }, 500);
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={[styles.title, { color: theme.colors.text }]}>Review Your Schedule</Text>
+    <ScrollView style={{ backgroundColor: colors.background }}>
+      <View style={styles.container}>
+        <Text style={[styles.title, { color: colors.text }]}>Review Your Schedule</Text>
 
-        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-          {/* Schedule Basic Info */}
-          <View style={styles.section}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>Schedule Name</Text>
-            <Text style={[styles.value, { color: theme.colors.text }]}>{scheduleName}</Text>
-          </View>
+        <Text style={[styles.label, { color: colors.text }]}>Schedule Name:</Text>
+        <Text style={[styles.value, { color: colors.text }]}>{scheduleName}</Text>
 
-          {/* Selected Days */}
-          <View style={styles.section}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>Selected Days</Text>
-            <View style={styles.chipContainer}>
-              {selectedDays.map((day, idx) => (
-                <View key={idx} style={[styles.chip, { backgroundColor: theme.colors.primary }]}>
-                  <Text style={[styles.chipText, { color: theme.colors.background }]}>{day}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+        <Text style={[styles.label, { color: colors.text }]}>Days:</Text>
+        <Text style={[styles.value, { color: colors.text }]}>{selectedDays.join(', ')}</Text>
 
-          {/* Periods */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Periods</Text>
-            {periods.map((p, idx) => {
-              const safeLabel = p.label.trim().length > 0
-                ? p.label
-                : hasZeroPeriod && idx === 0
-                ? "Zero Period"
-                : `Period ${hasZeroPeriod ? idx : idx + 1}`;
+        <Text style={[styles.label, { color: colors.text }]}>Periods:</Text>
+        {periods.map((p, i) => (
+          <Text key={i} style={[styles.value, { color: colors.text }]}>
+            {p.label || `Period ${i + 1}`}: {p.startTime} - {p.endTime}
+          </Text>
+        ))}
 
-              return (
-                <View key={idx} style={styles.periodRow}>
-                  <View style={styles.periodHeader}>
-                    <Text style={[styles.periodLabel, { color: theme.colors.text }]}>{safeLabel}</Text>
-                    <Text style={[styles.periodTime, { color: theme.colors.text }]}>
-                      {p.startTime} - {p.endTime}
-                    </Text>
-                  </View>
-                  {idx !== periods.length - 1 && (
-                    <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-                  )}
-                </View>
-              );
-            })}
-          </View>
+        {hasBreak && (
+          <>
+            <Text style={[styles.label, { color: colors.text }]}>Break:</Text>
+            <Text style={[styles.value, { color: colors.text }]}>
+              {breakStartTime} – {breakEndTime}
+            </Text>
+          </>
+        )}
 
-          {/* Extras */}
-          {(hasBreak || hasLunch) && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Extra Times</Text>
+        {hasLunch && (
+          <>
+            <Text style={[styles.label, { color: colors.text }]}>Lunch:</Text>
+            <Text style={[styles.value, { color: colors.text }]}>
+              {lunchStartTime} – {lunchEndTime}
+            </Text>
+          </>
+        )}
 
-              {hasBreak && (
-                <View style={styles.periodRow}>
-                  <View style={styles.periodHeader}>
-                    <Text style={[styles.periodLabel, { color: theme.colors.text }]}>Break</Text>
-                    <Text style={[styles.periodTime, { color: theme.colors.text }]}>
-                      {breakStartTime} - {breakEndTime}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {hasLunch && (
-                <View style={styles.periodRow}>
-                  <View style={styles.periodHeader}>
-                    <Text style={[styles.periodLabel, { color: theme.colors.text }]}>Lunch</Text>
-                    <Text style={[styles.periodTime, { color: theme.colors.text }]}>
-                      {lunchStartTime} - {lunchEndTime}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-
-        <AppButton
-          title="Save Schedule"
-          onPress={handleSave}
-          style={{ marginTop: 32 }}
-        />
-      </ScrollView>
-    </SafeAreaView>
+        <AppButton title={edit ? 'Update Schedule' : 'Save Schedule'} onPress={handleSave} />
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 48,
-    paddingHorizontal: 24,
-    alignItems: "stretch",
-    paddingBottom: 48,
+    padding: 24,
   },
   title: {
-    fontSize: 26,
-    fontWeight: "700",
-    textAlign: "center",
+    fontSize: 24,
+    fontWeight: '700',
     marginBottom: 24,
-  },
-  card: {
-    width: "100%",
-    padding: 28,
-    borderRadius: 16,
-    marginBottom: 24,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 12,
+    textAlign: 'center',
   },
   label: {
     fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
+    fontWeight: '600',
+    marginTop: 16,
   },
   value: {
     fontSize: 16,
-    marginBottom: 8,
+    marginTop: 4,
   },
-  chipContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chipText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  periodRow: {
-    marginBottom: 16,
-  },
-  periodHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  periodLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  periodTime: {
-    fontSize: 16,
-    opacity: 0.8,
-  },
-  divider: {
-    height: 1,
-    marginTop: 12,
-    marginBottom: 12,
-    opacity: 0.3,
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
