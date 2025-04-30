@@ -21,7 +21,6 @@ export default function HomeScreen() {
   const [currentBlock, setCurrentBlock] = useState('Loading...');
   const [minutesLeft, setMinutesLeft] = useState(null);
 
-  // 🔥 NEW: Redirect to onboarding if necessary
   useEffect(() => {
     if (schedulesLoaded && schedules.length === 0 && !hasOnboarded) {
       const timeout = setTimeout(() => {
@@ -66,8 +65,8 @@ export default function HomeScreen() {
   const findActiveSchedule = (now) => {
     const today = format(now, 'EEE'); // "Mon", "Tue", etc.
 
-    const matchingSchedule = schedules.find((s) =>
-      s.selectedDays?.includes(today)
+    const matchingSchedule = schedules.find(
+      (s) => Array.isArray(s.selectedDays) && s.selectedDays.includes(today)
     );
 
     if (matchingSchedule) {
@@ -75,21 +74,21 @@ export default function HomeScreen() {
       updateCurrentBlock(now, matchingSchedule);
     } else {
       setActiveSchedule(null);
-      setCurrentBlock("No Schedule Listed");
+      setCurrentBlock('No Schedule Listed');
       setMinutesLeft(null);
     }
   };
 
   const updateCurrentBlock = (now, schedule) => {
     if (!schedule) {
-      setCurrentBlock("No Schedule Listed");
+      setCurrentBlock('No Schedule Listed');
       setMinutesLeft(null);
       return;
     }
 
     const allBlocks = [];
 
-    schedule.periods.forEach(p => {
+    schedule.periods.forEach((p) => {
       allBlocks.push({
         label: p.label,
         start: parseTime(p.startTime, now),

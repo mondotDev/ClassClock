@@ -1,3 +1,5 @@
+// screens/SettingsScreen.js
+
 import React from 'react';
 import {
   SafeAreaView,
@@ -53,7 +55,10 @@ export default function SettingsScreen() {
   };
 
   const handleShowProFeatures = () => {
-    Alert.alert('Pro Features', 'Pro users can:\n\n- Create multiple schedules\n- Unlock future cloud sync\n- Access custom themes\n- Remove ads');
+    Alert.alert(
+      'Pro Features',
+      'Pro users can:\n\n- Create multiple schedules\n- Unlock future cloud sync\n- Access custom themes\n- Remove ads'
+    );
   };
 
   const toggleDevProMode = () => {
@@ -62,14 +67,13 @@ export default function SettingsScreen() {
   };
 
   const today = format(new Date(), 'EEE');
-  const activeSchedule = schedules.find((s) =>
-    s.selectedDays.includes(today)
+  const activeSchedule = schedules.find(
+    (s) => Array.isArray(s.selectedDays) && s.selectedDays.includes(today)
   );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Back Button */}
         <View style={styles.backButtonContainer}>
           <Pressable
             onPress={() => navigation.goBack()}
@@ -82,10 +86,8 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
 
-        {/* Header */}
         <Text style={[styles.header, { color: theme.colors.text }]}>Settings</Text>
 
-        {/* Current Active Schedule */}
         <View style={[styles.activeCard, { backgroundColor: theme.colors.card }]}>
           <Text style={[styles.activeTitle, { color: theme.colors.text }]}>Current Schedule</Text>
           {activeSchedule ? (
@@ -104,7 +106,6 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* Schedules Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Schedules</Text>
 
@@ -113,9 +114,9 @@ export default function SettingsScreen() {
               No schedules yet.
             </Text>
           ) : (
-            schedules.map((schedule) => (
+            schedules.map((schedule, idx) => (
               <View
-                key={schedule.id}
+                key={schedule.id ?? `${schedule.name}-${idx}`}
                 style={[styles.scheduleCard, { backgroundColor: theme.colors.card }]}
               >
                 <View style={styles.scheduleHeader}>
@@ -134,7 +135,7 @@ export default function SettingsScreen() {
                 </View>
 
                 <Text style={[styles.scheduleDays, { color: theme.colors.text }]}>
-                  {schedule.selectedDays.join(', ')}
+                  {Array.isArray(schedule.selectedDays) ? schedule.selectedDays.join(', ') : 'No days selected'}
                 </Text>
               </View>
             ))
@@ -159,7 +160,6 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* Appearance Settings */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Appearance</Text>
 
@@ -182,7 +182,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Pro Upgrade Section */}
         {!isPro && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Go Pro</Text>
@@ -191,7 +190,6 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* Dev-Only Pro Toggle */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Developer Tools</Text>
           <AppButton
