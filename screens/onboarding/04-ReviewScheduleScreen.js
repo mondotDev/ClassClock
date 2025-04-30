@@ -1,15 +1,12 @@
-// screens/onboarding/04-ReviewScheduleScreen.js
-
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useSchedules } from '../../context/AppContext';
+// screens/onboarding/ReviewScheduleScreen.js
+import React, { useEffect } from 'react';
+import { SafeAreaView, View, Text, StyleSheet, ScrollView } from 'react-native';
 import AppButton from '../../components/AppButton';
 import useTheme from '../../hooks/useTheme';
+import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 
-export default function ReviewScheduleScreen({ route, navigation }) {
-  const { addSchedule, updateSchedule } = useSchedules();
-  const { colors } = useTheme();
-
+export default function ReviewScheduleScreen({ navigation, route }) {
   const {
     scheduleName,
     selectedDays,
@@ -17,98 +14,108 @@ export default function ReviewScheduleScreen({ route, navigation }) {
     numPeriods,
     periods,
     hasBreak,
+    hasLunch,
     breakStartTime,
     breakEndTime,
-    hasLunch,
     lunchStartTime,
     lunchEndTime,
     edit = false,
     existingSchedule = null,
-  } = route.params || {};
+  } = route.params;
 
-  if (!scheduleName || !Array.isArray(periods)) {
-    return (
-      <View style={styles.centered}>
-        <Text style={{ color: colors.text }}>No schedule found.</Text>
-      </View>
-    );
-  }
+  const theme = useTheme();
+  const nav = useNavigation();
 
-  const handleSave = () => {
-    const newSchedule = {
-      id: edit && existingSchedule ? existingSchedule.id : Date.now().toString(),
-      name: scheduleName,
-      selectedDays,
-      hasZeroPeriod,
-      numPeriods,
-      periods,
-      hasBreak,
-      breakStartTime,
-      breakEndTime,
-      hasLunch,
-      lunchStartTime,
-      lunchEndTime,
-    };
-
-    if (edit && existingSchedule) {
-      updateSchedule(newSchedule);
-    } else {
-      addSchedule(newSchedule);
+  useEffect(() => {
+    if (edit && !existingSchedule) {
+      Toast.show({
+        type: 'error',
+        text1: 'Schedule not found',
+        text2: 'Returning to Home screen.',
+        position: 'top',
+      });
+      nav.replace('Home');
     }
+  }, []);
 
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Home' }],
+  const handleFinish = () => {
+    navigation.navigate('Home', {
+      newSchedule: {
+        name: scheduleName,
+        days: selectedDays,
+        hasZeroPeriod,
+        numPeriods,
+        periods,
+        hasBreak,
+        hasLunch,
+        breakStartTime,
+        breakEndTime,
+        lunchStartTime,
+        lunchEndTime,
+      },
+      edit,
+      existingSchedule,
     });
   };
 
   return (
-    <ScrollView style={{ backgroundColor: colors.background }}>
-      <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.text }]}>Review Your Schedule</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={[styles.header, { color: theme.colors.text }]}>
+          Review Your Schedule
+        </Text>
 
-        <Text style={[styles.label, { color: colors.text }]}>Schedule Name:</Text>
-        <Text style={[styles.value, { color: colors.text }]}>{scheduleName}</Text>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Name: <Text style={styles.value}>{scheduleName}</Text>
+        </Text>
 
-        <Text style={[styles.label, { color: colors.text }]}>Days:</Text>
-        <Text style={[styles.value, { color: colors.text }]}>{selectedDays.join(', ')}</Text>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Days: <Text style={styles.value}>{selectedDays.join(', ')}</Text>
+        </Text>
 
-        <Text style={[styles.label, { color: colors.text }]}>Periods:</Text>
-        {periods.map((p, i) => (
-          <Text key={i} style={[styles.value, { color: colors.text }]}>
-            {p.label || `Period ${i + 1}`}: {p.startTime} - {p.endTime}
-          </Text>
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Zero Period: <Text style={styles.value}>{hasZeroPeriod ? 'Yes' : 'No'}</Text>
+        </Text>
+
+        <Text style={[styles.label, { color: theme.colors.text }]}>
+          Number of Periods: <Text style={styles.value}>{numPeriods}</Text>
+        </Text>
+
+        {periods.map((p, idx) => (
+          <View key={idx} style={styles.periodCard}>
+            <Text style={[styles.periodTitle, { color: theme.colors.text }]}>
+              {p.label}
+            </Text>
+            <Text style={{ color: theme.colors.text }}>
+              {p.startTime} – {p.endTime}
+            </Text>
+          </View>
         ))}
 
         {hasBreak && (
-          <>
-            <Text style={[styles.label, { color: colors.text }]}>Break:</Text>
-            <Text style={[styles.value, { color: colors.text }]}>
-              {breakStartTime} – {breakEndTime}
-            </Text>
-          </>
+          <Text style={[styles.label, { color: theme.colors.text }]}>
+            Break: <Text style={styles.value}>{breakStartTime} – {breakEndTime}</Text>
+          </Text>
         )}
 
         {hasLunch && (
-          <>
-            <Text style={[styles.label, { color: colors.text }]}>Lunch:</Text>
-            <Text style={[styles.value, { color: colors.text }]}>
-              {lunchStartTime} – {lunchEndTime}
-            </Text>
-          </>
+          <Text style={[styles.label, { color: theme.colors.text }]}>
+            Lunch: <Text style={styles.value}>{lunchStartTime} – {lunchEndTime}</Text>
+          </Text>
         )}
 
-        <AppButton title={edit ? 'Update Schedule' : 'Save Schedule'} onPress={handleSave} />
-      </View>
-    </ScrollView>
+        <AppButton title="Finish" onPress={handleFinish} style={{ marginTop: 32 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     padding: 24,
+    paddingBottom: 64,
   },
-  title: {
+  header: {
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 24,
@@ -116,16 +123,21 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
-    fontWeight: '600',
-    marginTop: 16,
+    fontWeight: '500',
+    marginBottom: 8,
   },
   value: {
-    fontSize: 16,
-    marginTop: 4,
+    fontWeight: '400',
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  periodCard: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#eee',
+    marginBottom: 12,
+  },
+  periodTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
   },
 });

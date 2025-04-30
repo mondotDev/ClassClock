@@ -1,17 +1,20 @@
-import React, { useState } from 'react';
+// screens/onboarding/BreakLunchScreen.js
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
   Text,
   StyleSheet,
   Pressable,
+  Switch,
   Platform,
 } from 'react-native';
 import AppButton from '../../components/AppButton';
-import AppChip from '../../components/AppChip';
 import useTheme from '../../hooks/useTheme';
 import { format } from 'date-fns';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNavigation } from '@react-navigation/native';
+import Toast from 'react-native-toast-message';
 
 export default function BreakLunchScreen({ navigation, route }) {
   const {
@@ -25,6 +28,7 @@ export default function BreakLunchScreen({ navigation, route }) {
   } = route.params;
 
   const { colors } = useTheme();
+  const nav = useNavigation();
 
   const [hasBreak, setHasBreak] = useState(false);
   const [hasLunch, setHasLunch] = useState(false);
@@ -39,6 +43,18 @@ export default function BreakLunchScreen({ navigation, route }) {
     mode: 'time',
     field: null,
   });
+
+  useEffect(() => {
+    if (edit && !existingSchedule) {
+      Toast.show({
+        type: 'error',
+        text1: 'Schedule not found',
+        text2: 'Returning to Home screen.',
+        position: 'top',
+      });
+      nav.replace('Home');
+    }
+  }, []);
 
   const openTimePicker = (field) => {
     setPickerState({
@@ -95,19 +111,14 @@ export default function BreakLunchScreen({ navigation, route }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          Break and Lunch
-        </Text>
+        <Text style={[styles.title, { color: colors.text }]}>Break and Lunch</Text>
 
-        {/* Break Toggle */}
         <View style={styles.row}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            Include Break
-          </Text>
-          <AppChip
-            label={hasBreak ? 'Yes' : 'No'}
-            selected={hasBreak}
-            onPress={() => setHasBreak(!hasBreak)}
+          <Text style={[styles.label, { color: colors.text }]}>Include Break</Text>
+          <Switch
+            value={hasBreak}
+            onValueChange={setHasBreak}
+            thumbColor={hasBreak ? colors.primary : '#ccc'}
           />
         </View>
 
@@ -117,9 +128,7 @@ export default function BreakLunchScreen({ navigation, route }) {
               style={[styles.timeButton, { backgroundColor: colors.primary }]}
               onPress={() => openTimePicker('breakStart')}
             >
-              <Text
-                style={[styles.timeButtonText, { color: colors.background }]}
-              >
+              <Text style={[styles.timeButtonText, { color: colors.background }]}>
                 Break Start: {format(breakStartTime, 'h:mm a')}
               </Text>
             </Pressable>
@@ -128,24 +137,19 @@ export default function BreakLunchScreen({ navigation, route }) {
               style={[styles.timeButton, { backgroundColor: colors.primary }]}
               onPress={() => openTimePicker('breakEnd')}
             >
-              <Text
-                style={[styles.timeButtonText, { color: colors.background }]}
-              >
+              <Text style={[styles.timeButtonText, { color: colors.background }]}>
                 Break End: {format(breakEndTime, 'h:mm a')}
               </Text>
             </Pressable>
           </View>
         )}
 
-        {/* Lunch Toggle */}
         <View style={styles.row}>
-          <Text style={[styles.label, { color: colors.text }]}>
-            Include Lunch
-          </Text>
-          <AppChip
-            label={hasLunch ? 'Yes' : 'No'}
-            selected={hasLunch}
-            onPress={() => setHasLunch(!hasLunch)}
+          <Text style={[styles.label, { color: colors.text }]}>Include Lunch</Text>
+          <Switch
+            value={hasLunch}
+            onValueChange={setHasLunch}
+            thumbColor={hasLunch ? colors.primary : '#ccc'}
           />
         </View>
 
@@ -155,9 +159,7 @@ export default function BreakLunchScreen({ navigation, route }) {
               style={[styles.timeButton, { backgroundColor: colors.primary }]}
               onPress={() => openTimePicker('lunchStart')}
             >
-              <Text
-                style={[styles.timeButtonText, { color: colors.background }]}
-              >
+              <Text style={[styles.timeButtonText, { color: colors.background }]}>
                 Lunch Start: {format(lunchStartTime, 'h:mm a')}
               </Text>
             </Pressable>
@@ -166,9 +168,7 @@ export default function BreakLunchScreen({ navigation, route }) {
               style={[styles.timeButton, { backgroundColor: colors.primary }]}
               onPress={() => openTimePicker('lunchEnd')}
             >
-              <Text
-                style={[styles.timeButtonText, { color: colors.background }]}
-              >
+              <Text style={[styles.timeButtonText, { color: colors.background }]}>
                 Lunch End: {format(lunchEndTime, 'h:mm a')}
               </Text>
             </Pressable>
