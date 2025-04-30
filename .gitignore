@@ -1,58 +1,17 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
 node_modules/
-
-# Expo
+.idea/
 .expo/
+android/
 dist/
 web-build/
-expo-env.d.ts
-
-# VS Code stuff
 .vscode/
 *.code-workspace
-
-# Native
-*.orig.*
-*.jks
+.gradle/
+.DS_Store
+.env*.local
+*.log
+*.pem
 *.p8
 *.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-# ⚡️ Android build artifacts (after npx expo prebuild)
-android/app/build/
-android/build/
-android/.gradle/
-android/.idea/
-android/local.properties
-android/.cxx/
-android/app/debug.keystore
-
-
-# ⚡️ iOS build artifacts (if you ever open Xcode after prebuild)
-ios/build/
-ios/Pods/
-ios/Podfile.lock
-ios/.xcworkspace/
-ios/*.xcodeproj/
-ios/*.xcworkspace/
+*.jks
+*.keystore
