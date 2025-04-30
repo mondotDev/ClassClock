@@ -1,16 +1,17 @@
-// screens/onboarding/02-PeriodTimesScreen.js
-
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   SafeAreaView,
-  ScrollView,
+  Animated,
+  FlatList,
   View,
   Text,
-  StyleSheet,
-  Pressable,
   TextInput,
+  Pressable,
+  StyleSheet,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AppButton from '../../components/AppButton';
 import useTheme from '../../hooks/useTheme';
@@ -27,12 +28,14 @@ export default function PeriodTimesScreen({ navigation, route }) {
   } = route.params;
 
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const ITEM_WIDTH = width * 0.85;
+
   const total = numPeriods + (hasZeroPeriod ? 1 : 0);
 
   const generateDefaultPeriods = () => {
     const base = new Date();
-    base.setHours(8, 30, 0, 0); // Start at 8:30 AM
-
+    base.setHours(8, 30, 0, 0);
     return Array.from({ length: total }, (_, i) => {
       const start = new Date(base.getTime() + i * 50 * 60000);
       const end = new Date(start.getTime() + 50 * 60000);
@@ -56,18 +59,30 @@ export default function PeriodTimesScreen({ navigation, route }) {
     }
   });
 
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = useRef(null);
+
   const [pickerState, setPickerState] = useState({
     isVisible: false,
     mode: 'time',
     field: null,
   });
 
+  const arrowOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(arrowOpacity, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+        Animated.timing(arrowOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ]),
+      { iterations: 3 }
+    ).start();
+  }, []);
+
   const openTimePicker = (idx, type) => {
-    setPickerState({
-      isVisible: true,
-      mode: 'time',
-      field: { idx, type },
-    });
+    setPickerState({ isVisible: true, mode: 'time', field: { idx, type } });
   };
 
   const handleTimeChange = (event, selectedTime) => {
@@ -75,7 +90,6 @@ export default function PeriodTimesScreen({ navigation, route }) {
       setPickerState({ isVisible: false, mode: 'time', field: null });
       return;
     }
-
     const { idx, type } = pickerState.field;
     const updated = [...periods];
     updated[idx][type === 'start' ? 'startTime' : 'endTime'] = selectedTime;
@@ -97,78 +111,97 @@ export default function PeriodTimesScreen({ navigation, route }) {
       startTime: format(p.startTime, 'h:mm a'),
       endTime: format(p.endTime, 'h:mm a'),
     }));
-
     navigation.navigate('BreakLunch', {
-      scheduleName,           // ✅ Fixed
+      scheduleName,
       selectedDays,
-      hasZeroPeriod,          // ✅ Fixed
-      numPeriods,             // ✅ Fixed
+      hasZeroPeriod,
+      numPeriods,
       periods: finalPeriods,
       edit,
       existingSchedule,
     });
   };
 
+  const handleMomentumScrollEnd = (e) => {
+    const index = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
+    if (index !== currentIndex) {
+      Haptics.selectionAsync();
+      setCurrentIndex(index);
+    }
+  };
+
+  const renderItem = ({ item, index }) => {
+    const inputRange = [(index - 1) * ITEM_WIDTH, index * ITEM_WIDTH, (index + 1) * ITEM_WIDTH];
+    const scale = scrollX.interpolate({ inputRange, outputRange: [0.92, 1, 0.92], extrapolate: 'clamp' });
+    const opacity = scrollX.interpolate({ inputRange, outputRange: [0.5, 1, 0.5], extrapolate: 'clamp' });
+    const shadowOpacity = scrollX.interpolate({ inputRange, outputRange: [0.05, 0.2, 0.05], extrapolate: 'clamp' });
+
+    return (
+      <Animated.View
+        style={[styles.card, {
+          width: ITEM_WIDTH,
+          backgroundColor: colors.card,
+          transform: [{ scale }],
+          opacity,
+          shadowOpacity,
+        }]}
+      >
+        <TextInput
+          value={item.label}
+          onChangeText={text => handleLabelChange(index, text)}
+          placeholder={`Period ${index + 1}`}
+          style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+          placeholderTextColor={colors.border}
+        />
+        <View style={styles.timeRow}>
+          <Pressable style={[styles.timeButton, { backgroundColor: colors.primary }]} onPress={() => openTimePicker(index, 'start')}>
+            <Text style={[styles.timeButtonText, { color: colors.background }]}>Start: {format(item.startTime, 'h:mm a')}</Text>
+          </Pressable>
+          <Pressable style={[styles.timeButton, { backgroundColor: colors.primary }]} onPress={() => openTimePicker(index, 'end')}>
+            <Text style={[styles.timeButtonText, { color: colors.background }]}>End: {format(item.endTime, 'h:mm a')}</Text>
+          </Pressable>
+        </View>
+      </Animated.View>
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {periods.map((p, idx) => (
-          <View key={idx} style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.periodLabel, { color: colors.text }]}>
-              {p.label}
-            </Text>
-
-            <TextInput
-              value={p.label}
-              onChangeText={text => handleLabelChange(idx, text)}
-              placeholder="Enter Class Name"
-              style={[styles.input, { borderColor: colors.border, color: colors.text }]}
-              placeholderTextColor={colors.border}
-            />
-
-            <View style={styles.timeRow}>
-              <Pressable
-                style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                onPress={() => openTimePicker(idx, 'start')}
-              >
-                <Text style={[styles.timeButtonText, { color: colors.background }]}>
-                  Start: {format(p.startTime, 'h:mm a')}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                onPress={() => openTimePicker(idx, 'end')}
-              >
-                <Text style={[styles.timeButtonText, { color: colors.background }]}>
-                  End: {format(p.endTime, 'h:mm a')}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
-
-        <AppButton
-          title="Next"
-          onPress={handleNext}
-          disabled={!allFilled}
-          style={{ marginTop: 32 }}
-        />
-
-        {pickerState.isVisible && (
-          <DateTimePicker
-            value={
-              pickerState.field?.type === 'start'
-                ? periods[pickerState.field.idx].startTime
-                : periods[pickerState.field.idx].endTime
-            }
-            mode="time"
-            is24Hour={false}
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleTimeChange}
+      <View style={{ flex: 1, justifyContent: 'center', paddingTop: 20 }}>
+        <View style={styles.centeredCarousel}>
+          <Animated.FlatList
+            ref={flatListRef}
+            data={periods}
+            keyExtractor={(_, i) => i.toString()}
+            renderItem={renderItem}
+            horizontal
+            pagingEnabled
+            snapToInterval={ITEM_WIDTH}
+            decelerationRate="fast"
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 12 }}
+            onScroll={Animated.event([
+              { nativeEvent: { contentOffset: { x: scrollX } } }
+            ], { useNativeDriver: true })}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
           />
-        )}
-      </ScrollView>
+          <Animated.Text style={[styles.arrowHint, { opacity: arrowOpacity, color: colors.border }]}>➡ Swipe →</Animated.Text>
+        </View>
+      </View>
+      <View style={{ padding: 24 }}>
+        <AppButton title="Next" onPress={handleNext} disabled={!allFilled} />
+      </View>
+      {pickerState.isVisible && (
+        <DateTimePicker
+          value={pickerState.field?.type === 'start'
+            ? periods[pickerState.field.idx].startTime
+            : periods[pickerState.field.idx].endTime}
+          mode="time"
+          is24Hour={false}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleTimeChange}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -191,43 +224,43 @@ function parseTime(timeString) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 36,
-    padding: 24,
-    paddingBottom: 48,
+  centeredCarousel: {
+    height: 260,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   card: {
+    height: 200,
+    justifyContent: 'center',
     padding: 20,
-    borderRadius: 12,
-    marginBottom: 36,
-    elevation: 3,
+    borderRadius: 20,
+    marginHorizontal: 12,
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-  },
-  periodLabel: {
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
   },
   input: {
+    width: '100%',
     borderWidth: 1,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    fontSize: 16,
+    fontSize: 18,
     marginBottom: 20,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    fontWeight: '600',
   },
   timeRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
     justifyContent: 'space-between',
+    width: '100%',
+    gap: 12,
   },
   timeButton: {
-    flexBasis: '48%',
+    flex: 1,
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -236,5 +269,11 @@ const styles = StyleSheet.create({
   timeButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  arrowHint: {
+    textAlign: 'center',
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

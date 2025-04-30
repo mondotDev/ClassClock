@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import AppButton from "../../components/AppButton";
+import AppChip from "../../components/AppChip";
 import { useSchedules } from "../../context/AppContext";
 import useTheme from "../../hooks/useTheme";
 import Toast from "react-native-toast-message";
@@ -68,7 +69,7 @@ export default function ScheduleNameScreen({ route }) {
     const isDuplicate = schedules.some((s) => {
       const existingName = s.name.trim().toLowerCase();
       if (edit && existingSchedule?.name?.trim().toLowerCase() === existingName) {
-        return false; // allow same name for same schedule being edited
+        return false;
       }
       return existingName === nameLower;
     });
@@ -129,29 +130,12 @@ export default function ScheduleNameScreen({ route }) {
         </Text>
         <View style={styles.chipContainer}>
           {daysOfWeek.map((day) => (
-            <Pressable
+            <AppChip
               key={day}
+              label={day}
+              selected={selectedDays.includes(day)}
               onPress={() => toggleDay(day)}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: selectedDays.includes(day)
-                    ? theme.colors.primary
-                    : theme.colors.card,
-                },
-              ]}
-            >
-              <Text
-                style={{
-                  color: selectedDays.includes(day)
-                    ? "white"
-                    : theme.colors.text,
-                  fontWeight: "600",
-                }}
-              >
-                {day}
-              </Text>
-            </Pressable>
+            />
           ))}
         </View>
 
@@ -162,7 +146,8 @@ export default function ScheduleNameScreen({ route }) {
           <Switch
             value={hasZeroPeriod}
             onValueChange={setHasZeroPeriod}
-            thumbColor={hasZeroPeriod ? theme.colors.primary : "#ccc"}
+            thumbColor={theme.colors.thumb}
+            trackColor={{ false: "#ccc", true: theme.colors.primary }}
           />
         </View>
 
@@ -196,7 +181,9 @@ export default function ScheduleNameScreen({ route }) {
           </View>
         </View>
 
-        <AppButton title="Next" onPress={handleNext} />
+        <View style={{ marginBottom: 32 }}>
+          <AppButton title="Next" onPress={handleNext} />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -216,10 +203,10 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 50,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 16,
     fontSize: 18,
-    marginBottom: 24,
+    marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 18,
@@ -229,16 +216,8 @@ const styles = StyleSheet.create({
   chipContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
+    justifyContent: "center", // center alignment for chips
     marginBottom: 24,
-  },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#ccc",
   },
   row: {
     flexDirection: "row",
@@ -251,14 +230,15 @@ const styles = StyleSheet.create({
   },
   stepper: {
     flexDirection: "row",
+    alignItems: "center",
   },
   stepButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 8,
+    marginLeft: 12,
     elevation: 2,
     shadowColor: "#000",
     shadowOpacity: 0.1,
