@@ -46,6 +46,8 @@ android/.gradle/
 android/.idea/
 android/local.properties
 android/.cxx/
+android/app/debug.keystore
+
 
 # ⚡️ iOS build artifacts (if you ever open Xcode after prebuild)
 ios/build/
