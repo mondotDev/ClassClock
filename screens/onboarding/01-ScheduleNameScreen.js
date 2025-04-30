@@ -52,6 +52,7 @@ export default function ScheduleNameScreen({ route }) {
 
   const handleNext = () => {
     const trimmedName = scheduleName.trim();
+
     if (!trimmedName) {
       Toast.show({
         type: "error",
@@ -62,20 +63,24 @@ export default function ScheduleNameScreen({ route }) {
       return;
     }
 
-    if (!edit) {
-      const duplicate = schedules.some(
-        (s) => s.name.trim().toLowerCase() === trimmedName.toLowerCase()
-      );
+    const nameLower = trimmedName.toLowerCase();
 
-      if (duplicate) {
-        Toast.show({
-          type: "error",
-          text1: "Duplicate Name",
-          text2: "A schedule with that name already exists.",
-          position: "top",
-        });
-        return;
+    const isDuplicate = schedules.some((s) => {
+      const existingName = s.name.trim().toLowerCase();
+      if (edit && existingSchedule?.name?.trim().toLowerCase() === existingName) {
+        return false; // allow same name for same schedule being edited
       }
+      return existingName === nameLower;
+    });
+
+    if (isDuplicate) {
+      Toast.show({
+        type: "error",
+        text1: "Duplicate Name",
+        text2: "A schedule with that name already exists.",
+        position: "top",
+      });
+      return;
     }
 
     if (selectedDays.length === 0) {
