@@ -1,9 +1,7 @@
-// screens/onboarding/PeriodTimesScreen.js
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
   Animated,
-  FlatList,
   View,
   Text,
   TextInput,
@@ -18,8 +16,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AppButton from '../../components/AppButton';
 import useTheme from '../../hooks/useTheme';
 import { format } from 'date-fns';
-import { useNavigation } from '@react-navigation/native';
-import Toast from 'react-native-toast-message';
+import { LinearGradient } from 'expo-linear-gradient';
+
 
 export default function PeriodTimesScreen({ navigation, route }) {
   const {
@@ -33,23 +31,9 @@ export default function PeriodTimesScreen({ navigation, route }) {
 
   const { colors } = useTheme();
   const { width, height } = useWindowDimensions();
-  const ITEM_WIDTH = width;
+  const ITEM_WIDTH = width * 0.92;
 
   const total = numPeriods + (hasZeroPeriod ? 1 : 0);
-
-  const nav = useNavigation();
-
-  useEffect(() => {
-    if (edit && !existingSchedule) {
-      Toast.show({
-        type: 'error',
-        text1: 'Schedule not found',
-        text2: 'Returning to Home screen.',
-        position: 'top',
-      });
-      nav.replace('Home');
-    }
-  }, []);
 
   const generateDefaultPeriods = () => {
     const base = new Date();
@@ -76,13 +60,18 @@ export default function PeriodTimesScreen({ navigation, route }) {
   );
 
   const scrollX = useRef(new Animated.Value(0)).current;
-  const flatListRef = useRef(null);
-
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pickerState, setPickerState] = useState({ isVisible: false, mode: 'time', field: null });
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const boxPulse = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const nextButtonOpacity = useRef(new Animated.Value(0)).current;
+
+  // 🪄 Shimmer hint animation refs
+  const shimmerAnim = useRef(new Animated.Value(-100)).current;
+  const shimmerFadeAnim = useRef(new Animated.Value(1)).current;
+  const [showShimmer, setShowShimmer] = useState(true);
 
   useEffect(() => {
     Animated.loop(
@@ -107,7 +96,63 @@ export default function PeriodTimesScreen({ navigation, route }) {
         useNativeDriver: true,
       }),
     ]).start();
+
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      delay: 100,
+      useNativeDriver: true,
+    }).start();
   }, []);
+
+  useEffect(() => {
+    Animated.timing(nextButtonOpacity, {
+      toValue: currentIndex === periods.length - 1 ? 1 : 0,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [currentIndex]);
+
+  // ✨ Shimmer animation logic
+  useEffect(() => {
+    if (currentIndex !== 0 || !showShimmer) return;
+
+    let loopCount = 0;
+    const shimmerLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, {
+          toValue: width,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmerAnim, {
+          toValue: -100,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    shimmerLoop.start();
+
+    const interval = setInterval(() => {
+      loopCount += 1;
+      if (loopCount >= 3) {
+        shimmerLoop.stop();
+        Animated.timing(shimmerFadeAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }).start(() => setShowShimmer(false));
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => {
+      shimmerLoop.stop();
+      clearInterval(interval);
+    };
+  }, [currentIndex, showShimmer]);
 
   const openTimePicker = (idx, type) =>
     setPickerState({ isVisible: true, mode: 'time', field: { idx, type } });
@@ -128,12 +173,10 @@ export default function PeriodTimesScreen({ navigation, route }) {
     setPeriods(updated);
   };
 
-  const allFilled = periods.every(
-    (p) => p.startTime && p.endTime && p.label.trim().length > 0
-  );
+  const allFilled = periods.every(p => p.startTime && p.endTime && p.label.trim().length > 0);
 
   const handleNext = () => {
-    const finalPeriods = periods.map((p) => ({
+    const finalPeriods = periods.map(p => ({
       label: p.label,
       startTime: format(p.startTime, 'h:mm a'),
       endTime: format(p.endTime, 'h:mm a'),
@@ -157,56 +200,86 @@ export default function PeriodTimesScreen({ navigation, route }) {
     }
   };
 
-  const renderItem = ({ item, index }) => (
-    <View style={[styles.card, { width: ITEM_WIDTH, backgroundColor: colors.card }]}>
-      <Text style={[styles.inputLabel, { color: colors.text }]}>Enter your class name</Text>
-      <Animated.View style={[styles.inputWrapper, { transform: [{ scale: boxPulse }] }]}>
-        <TextInput
-          value={item.label}
-          onChangeText={(text) => handleLabelChange(index, text)}
-          placeholder={`Class Name`}
-          style={[styles.input, { borderColor: colors.border, color: colors.text }]}
-          placeholderTextColor={colors.border}
-        />
-        <Ionicons name="pencil" size={20} color={colors.border} style={styles.inlineIcon} />
+  const renderItem = useCallback(({ item, index }) => {
+    const inputRange = [
+      (index - 1) * ITEM_WIDTH,
+      index * ITEM_WIDTH,
+      (index + 1) * ITEM_WIDTH,
+    ];
+    const tilt = scrollX.interpolate({
+      inputRange,
+      outputRange: ['5deg', '0deg', '-5deg'],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            width: ITEM_WIDTH,
+            backgroundColor: colors.card,
+            transform: [{ rotateY: tilt }],
+            opacity: fadeAnim,
+          },
+        ]}
+      >
+        <Text style={[styles.inputLabel, { color: colors.text }]}>Enter your class name</Text>
+        <Animated.View style={[styles.inputWrapper, { transform: [{ scale: boxPulse }] }]}>
+          <TextInput
+            value={item.label}
+            onChangeText={(text) => handleLabelChange(index, text)}
+            placeholder={`Class Name`}
+            style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+            placeholderTextColor={colors.border}
+          />
+          <Ionicons name="pencil" size={20} color={colors.border} style={styles.inlineIcon} />
+        </Animated.View>
+        <View style={styles.timeRow}>
+          <Pressable
+            style={[styles.timeButton, { backgroundColor: colors.primary }]}
+            onPress={() => openTimePicker(index, 'start')}
+          >
+            <Text style={[styles.timeButtonText, { color: colors.background }]}>
+              Start: {format(item.startTime, 'h:mm a')}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.timeButton, { backgroundColor: colors.primary }]}
+            onPress={() => openTimePicker(index, 'end')}
+          >
+            <Text style={[styles.timeButtonText, { color: colors.background }]}>
+              End: {format(item.endTime, 'h:mm a')}
+            </Text>
+          </Pressable>
+        </View>
       </Animated.View>
-      <View style={styles.timeRow}>
-        <Pressable
-          style={[styles.timeButton, { backgroundColor: colors.primary }]}
-          onPress={() => openTimePicker(index, 'start')}
-        >
-          <Text style={[styles.timeButtonText, { color: colors.background }]}>
-            Start: {format(item.startTime, 'h:mm a')}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.timeButton, { backgroundColor: colors.primary }]}
-          onPress={() => openTimePicker(index, 'end')}
-        >
-          <Text style={[styles.timeButtonText, { color: colors.background }]}>
-            End: {format(item.endTime, 'h:mm a')}
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  );
+    );
+  }, [colors, boxPulse, fadeAnim]);
+
+  const progress = Animated.divide(scrollX, ITEM_WIDTH);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <View style={{ height: height * 0.55, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, paddingVertical: 32, justifyContent: 'space-around' }}>
+        <View style={{ flex: 1, justifyContent: 'center' }}>
           <Animated.FlatList
             data={periods}
             keyExtractor={(_, i) => i.toString()}
             renderItem={renderItem}
             horizontal
             pagingEnabled
-            bounces={false}
-            decelerationRate="fast"
             showsHorizontalScrollIndicator={false}
-            snapToAlignment="center"
+            decelerationRate="fast"
+            bounces={true}
             snapToInterval={ITEM_WIDTH}
-            disableIntervalMomentum={true}
+            disableIntervalMomentum
+            initialNumToRender={3}
+            maxToRenderPerBatch={5}
+            windowSize={5}
+            contentContainerStyle={{
+              paddingHorizontal: (width - ITEM_WIDTH) / 2,
+            }}
             onScroll={Animated.event(
               [{ nativeEvent: { contentOffset: { x: scrollX } } }],
               { useNativeDriver: false }
@@ -214,11 +287,47 @@ export default function PeriodTimesScreen({ navigation, route }) {
             onMomentumScrollEnd={handleMomentumScrollEnd}
           />
         </View>
-        <View style={{ alignItems: 'center', paddingHorizontal: 24, marginTop: 12 }}>
+
+        {/* ✨ Shimmer hint */}
+        {currentIndex === 0 && showShimmer && (
+          <View style={{ alignItems: 'center', marginTop: 12 }}>
+            <View style={{ position: 'relative', overflow: 'hidden' }}>
+              <Animated.Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: colors.border,
+                  opacity: shimmerFadeAnim,
+                }}
+              >
+                Swipe to continue →
+              </Animated.Text>
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: '100%',
+                  transform: [{ translateX: shimmerAnim }],
+                }}
+              >
+                <LinearGradient
+                  colors={['transparent', 'rgba(255,255,255,0.5)', 'transparent']}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={{ width: 100, height: '100%' }}
+                />
+              </Animated.View>
+            </View>
+          </View>
+        )}
+
+        <View style={{ alignItems: 'center' }}>
           <Animated.Text
             style={[styles.stepper, { color: colors.text, transform: [{ scale: pulseAnim }] }]}
           >
-            Card {currentIndex + 1} of {periods.length}
+            Class {currentIndex + 1} of {periods.length}
           </Animated.Text>
           <View style={styles.progressContainer}>
             <View style={[styles.progressBar, { backgroundColor: colors.border }]} />
@@ -227,20 +336,26 @@ export default function PeriodTimesScreen({ navigation, route }) {
                 styles.progressIndicator,
                 {
                   backgroundColor: colors.primary,
-                  width: scrollX.interpolate({
-                    inputRange: [0, ITEM_WIDTH * (periods.length - 1)],
-                    outputRange: ['0%', '100%'],
-                    extrapolate: 'clamp',
-                  }),
+                  transform: [
+                    {
+                      scaleX: progress.interpolate({
+                        inputRange: [0, periods.length - 1],
+                        outputRange: [0.01, 1],
+                        extrapolate: 'clamp',
+                      }),
+                    },
+                  ],
                 },
               ]}
             />
           </View>
         </View>
+
+        <Animated.View style={{ width: '100%', opacity: nextButtonOpacity }}>
+          <AppButton title="Next" onPress={handleNext} disabled={!allFilled} />
+        </Animated.View>
       </View>
-      <View style={{ padding: 24 }}>
-        <AppButton title="Next" onPress={handleNext} disabled={!allFilled} />
-      </View>
+
       {pickerState.isVisible && (
         <DateTimePicker
           value={
@@ -265,12 +380,9 @@ function parseTime(timeString) {
     if (ampm === 'PM' && hours < 12) hours += 12;
     if (ampm === 'AM' && hours === 12) hours = 0;
     const now = new Date();
-    now.setHours(hours);
-    now.setMinutes(minutes);
-    now.setSeconds(0);
-    now.setMilliseconds(0);
+    now.setHours(hours, minutes, 0, 0);
     return now;
-  } catch (e) {
+  } catch {
     return new Date();
   }
 }
@@ -283,6 +395,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   card: {
+    marginTop: 162,
     height: 240,
     justifyContent: 'center',
     padding: 20,
@@ -293,6 +406,7 @@ const styles = StyleSheet.create({
     width: '100%',
     position: 'relative',
     alignItems: 'center',
+    marginBottom: 20,
   },
   input: {
     width: '100%',
@@ -301,7 +415,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     fontSize: 18,
-    marginBottom: 20,
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: 1.2,
@@ -310,7 +423,7 @@ const styles = StyleSheet.create({
   inlineIcon: {
     position: 'absolute',
     right: 20,
-    top: '28%',
+    top: 12,
   },
   timeRow: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 // screens/onboarding/ScheduleNameScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   SafeAreaView,
   View,
@@ -8,15 +8,16 @@ import {
   StyleSheet,
   Switch,
   Pressable,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AppButton from '../../components/AppButton';
 import { useSchedules } from '../../context/AppContext';
 import useTheme from '../../hooks/useTheme';
 import Toast from 'react-native-toast-message';
+import * as Haptics from 'expo-haptics';
 
-const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-const weekends = ['Sat', 'Sun'];
+const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function ScheduleNameScreen({ route }) {
   const { params } = route || {};
@@ -38,6 +39,40 @@ export default function ScheduleNameScreen({ route }) {
   const theme = useTheme();
   const { schedules } = useSchedules();
 
+  const fadeAnims = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]).current;
+
+  const translateAnims = useRef([
+    new Animated.Value(30),
+    new Animated.Value(30),
+    new Animated.Value(30),
+  ]).current;
+
+  const inputScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const animations = fadeAnims.map((fade, index) =>
+      Animated.parallel([
+        Animated.timing(fade, {
+          toValue: 1,
+          duration: 400,
+          delay: index * 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateAnims[index], {
+          toValue: 0,
+          duration: 400,
+          delay: index * 150,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    Animated.stagger(100, animations).start();
+  }, []);
+
   useEffect(() => {
     if (edit && !existingSchedule) {
       Toast.show({
@@ -51,17 +86,24 @@ export default function ScheduleNameScreen({ route }) {
   }, []);
 
   const toggleDay = (day) => {
+    Haptics.selectionAsync();
     setSelectedDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
   };
 
   const incrementPeriods = () => {
-    if (numPeriods < 12) setNumPeriods((prev) => prev + 1);
+    if (numPeriods < 12) {
+      setNumPeriods((prev) => prev + 1);
+      Haptics.selectionAsync();
+    }
   };
 
   const decrementPeriods = () => {
-    if (numPeriods > 1) setNumPeriods((prev) => prev - 1);
+    if (numPeriods > 1) {
+      setNumPeriods((prev) => prev - 1);
+      Haptics.selectionAsync();
+    }
   };
 
   const handleNext = () => {
@@ -102,6 +144,8 @@ export default function ScheduleNameScreen({ route }) {
       return;
     }
 
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
     navigation.navigate('PeriodTimes', {
       scheduleName: trimmedName,
       selectedDays,
@@ -112,79 +156,135 @@ export default function ScheduleNameScreen({ route }) {
     });
   };
 
-  const renderChip = (day) => (
-    <Pressable
-      key={day}
-      onPress={() => toggleDay(day)}
-      style={[
-        styles.chip,
-        {
-          backgroundColor: selectedDays.includes(day)
-            ? theme.colors.primary
-            : theme.colors.card,
-        },
-      ]}
-    >
-      <Text
-        style={{
-          color: selectedDays.includes(day) ? 'white' : theme.colors.text,
-          fontWeight: '600',
-        }}
-      >
-        {day}
-      </Text>
-    </Pressable>
-  );
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <View style={styles.container}>
         <Text style={[styles.title, { color: theme.colors.text }]}>Name Your Schedule</Text>
 
-        <TextInput
+        {/* Name input */}
+        <Animated.View
           style={[
-            styles.input,
+            styles.card,
             {
               backgroundColor: theme.colors.card,
-              color: theme.colors.text,
+              opacity: fadeAnims[0],
+              transform: [{ translateY: translateAnims[0] }],
             },
           ]}
-          value={scheduleName}
-          onChangeText={setScheduleName}
-          placeholder="Enter schedule name"
-          placeholderTextColor={theme.colors.text + '80'}
-        />
+        >
+          <Animated.View style={{ transform: [{ scale: inputScale }] }}>
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: theme.colors.card,
+                  color: theme.colors.text,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              value={scheduleName}
+              onChangeText={setScheduleName}
+              placeholder="Enter schedule name"
+              placeholderTextColor={theme.colors.text + '80'}
+              onFocus={() =>
+                Animated.spring(inputScale, {
+                  toValue: 1.03,
+                  useNativeDriver: true,
+                }).start()
+              }
+              onBlur={() =>
+                Animated.spring(inputScale, {
+                  toValue: 1,
+                  useNativeDriver: true,
+                }).start()
+              }
+            />
+          </Animated.View>
+        </Animated.View>
 
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select Days</Text>
-        <View style={styles.chipRow}>{weekdays.map(renderChip)}</View>
-        <View style={styles.chipRow}>{weekends.map(renderChip)}</View>
-
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Zero Period</Text>
-          <Switch
-            value={hasZeroPeriod}
-            onValueChange={setHasZeroPeriod}
-            thumbColor={hasZeroPeriod ? theme.colors.primary : '#ccc'}
-          />
-        </View>
-
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: theme.colors.text }]}>Periods: {numPeriods}</Text>
-          <View style={styles.stepper}>
-            <Pressable
-              style={[styles.stepButton, { backgroundColor: theme.colors.card }]}
-              onPress={decrementPeriods}
-            >
-              <Text style={[styles.stepText, { color: theme.colors.text }]}>-</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.stepButton, { backgroundColor: theme.colors.card }]}
-              onPress={incrementPeriods}
-            >
-              <Text style={[styles.stepText, { color: theme.colors.text }]}>+</Text>
-            </Pressable>
+        {/* Days */}
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.colors.card,
+              opacity: fadeAnims[1],
+              transform: [{ translateY: translateAnims[1] }],
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Select Days</Text>
+          <View style={styles.chipContainer}>
+            {daysOfWeek.map((day) => (
+              <Pressable
+                key={day}
+                onPress={() => toggleDay(day)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: selectedDays.includes(day)
+                      ? theme.colors.primary
+                      : theme.colors.background,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    color: selectedDays.includes(day)
+                      ? 'white'
+                      : theme.colors.text,
+                    fontWeight: '600',
+                  }}
+                >
+                  {day}
+                </Text>
+              </Pressable>
+            ))}
           </View>
-        </View>
+        </Animated.View>
+
+        {/* Toggles */}
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.colors.card,
+              opacity: fadeAnims[2],
+              transform: [{ translateY: translateAnims[2] }],
+            },
+          ]}
+        >
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Zero Period</Text>
+            <Switch
+              value={hasZeroPeriod}
+              onValueChange={(v) => {
+                Haptics.selectionAsync();
+                setHasZeroPeriod(v);
+              }}
+              thumbColor={hasZeroPeriod ? theme.colors.primary : '#ccc'}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>Periods: {numPeriods}</Text>
+            <View style={styles.stepper}>
+              <Pressable
+                style={[styles.stepButton, { backgroundColor: theme.colors.background }]}
+                onPress={decrementPeriods}
+              >
+                <Text style={[styles.stepText, { color: theme.colors.text }]}>-</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.stepButton, { backgroundColor: theme.colors.background }]}
+                onPress={incrementPeriods}
+              >
+                <Text style={[styles.stepText, { color: theme.colors.text }]}>+</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Animated.View>
 
         <AppButton title="Next" onPress={handleNext} />
       </View>
@@ -194,9 +294,9 @@ export default function ScheduleNameScreen({ route }) {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 32,
     flex: 1,
     padding: 24,
+    marginTop: 32,
   },
   title: {
     fontSize: 24,
@@ -204,39 +304,50 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
   },
+  card: {
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+  },
   input: {
     height: 50,
+    borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 18,
-    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '500',
-    marginBottom: 8,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  chipRow: {
+  chipContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-    marginBottom: 8,
     gap: 8,
   },
   chip: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 16,
+    margin: 4,
     borderWidth: 1,
-    borderColor: '#ccc',
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 18,
+    fontSize: 16,
   },
   stepper: {
     flexDirection: 'row',
@@ -255,7 +366,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   stepText: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
   },
 });
