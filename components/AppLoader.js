@@ -1,3 +1,4 @@
+// components/AppLoader.js
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Image } from 'react-native';
 import useTheme from '../hooks/useTheme';
@@ -6,8 +7,8 @@ export default function AppLoader({ onFinish }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const theme = useTheme();
 
+  // Step 1: Fade In when component mounts
   useEffect(() => {
-    // Step 1: Fade In
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 600,
@@ -15,16 +16,17 @@ export default function AppLoader({ onFinish }) {
     }).start();
   }, []);
 
+  // Step 2: Wait for signal, then Fade Out and call onFinish
   useEffect(() => {
     if (onFinish) {
-      // Step 2: Wait for a signal, then Fade Out
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 400,
-        delay: 200, // tiny delay before starting fade-out
+        delay: 200, // tiny delay before fade-out
         useNativeDriver: true,
       }).start(() => {
-        onFinish(); // Tell MainNavigator we’re done
+        // Schedule onFinish after current execution context
+        setTimeout(() => onFinish(), 0);
       });
     }
   }, [onFinish]);
@@ -32,7 +34,7 @@ export default function AppLoader({ onFinish }) {
   return (
     <Animated.View style={[styles.container, { backgroundColor: theme.colors.background, opacity: fadeAnim }]}>
       <Image
-        source={require('../assets/icon.png')} // ⚡ Your branded icon
+        source={require('../assets/icon.png')}
         style={styles.logo}
         resizeMode="contain"
       />
@@ -45,7 +47,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10, // ensure it sits on top
+    zIndex: 10,
   },
   logo: {
     width: 200,
