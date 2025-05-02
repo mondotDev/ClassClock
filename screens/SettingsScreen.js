@@ -1,6 +1,6 @@
 // screens/SettingsScreen.js
 
-import React from "react";
+import React, { useState } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -17,6 +17,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import AppButton from "../components/AppButton";
 import useTheme from "../hooks/useTheme";
 import { useSettings, useSchedules } from "../context/AppContext";
+import { format } from "date-fns";
+import UpgradeModal from "../components/UpgradeModal";
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -24,7 +26,6 @@ export default function SettingsScreen() {
   const {
     schedules,
     deleteSchedule,
-    activeScheduleId,
     isPro,
     setIsPro,
     setSchedules,
@@ -33,8 +34,7 @@ export default function SettingsScreen() {
   } = useSchedules();
 
   const { isDarkMode, setIsDarkMode, is24HourTime, setIs24HourTime } = useSettings();
-
-  const activeSchedule = schedules.find((s) => s.id === activeScheduleId);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const handleEditSchedule = (schedule) => {
     navigation.navigate("ScheduleName", {
@@ -63,11 +63,20 @@ export default function SettingsScreen() {
   };
 
   const handleCreateNewSchedule = () => {
-    navigation.navigate("ScheduleName");
+    if (isPro || schedules.length === 0) {
+      navigation.navigate("ScheduleName");
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
+
+  const handleFakeUpgrade = () => {
+    setIsPro(true);
+    setShowUpgradeModal(false);
+    Alert.alert("Success", "Pro features unlocked!");
   };
 
   const handleResetAll = async () => {
-    console.log("🔁 Reset All Triggered");
     try {
       await AsyncStorage.multiRemove([
         "@schedules",
@@ -90,6 +99,8 @@ export default function SettingsScreen() {
     }
   };
 
+  const today = format(new Date(), "EEE");
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -107,74 +118,53 @@ export default function SettingsScreen() {
 
         <Text style={[styles.header, { color: theme.colors.text }]}>Settings</Text>
 
-        <View style={[styles.activeCard, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.activeTitle, { color: theme.colors.text }]}>Current Schedule</Text>
-          {activeSchedule ? (
-            <>
-              <Text style={[styles.activeName, { color: theme.colors.text }]}>
-                {activeSchedule.scheduleName || "⚠️ Missing scheduleName"}
-              </Text>
-              <Text style={[styles.activeDays, { color: theme.colors.text + "AA" }]}>
-                {activeSchedule.selectedDays?.join(", ") || "No days selected"}
-              </Text>
-            </>
-          ) : (
-            <Text style={[styles.noActive, { color: theme.colors.text + "AA" }]}>
-              No Active Schedule Found
-            </Text>
-          )}
-        </View>
-
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Schedules</Text>
 
           {schedules.length === 0 ? (
-            <Text style={[styles.emptyText, { color: theme.colors.text + "99" }]}>
-              No schedules yet.
-            </Text>
+            <Text style={[styles.emptyText, { color: theme.colors.text + "99" }]}>No schedules yet.</Text>
           ) : (
-            schedules.map((schedule, idx) => (
-              <View
-                key={schedule.id ?? `${schedule.scheduleName}-${idx}`}
-                style={[styles.scheduleCard, { backgroundColor: theme.colors.card }]}
-              >
-                <View style={styles.scheduleHeader}>
-                  <Text style={[styles.scheduleName, { color: theme.colors.text }]}>
-                    {schedule.scheduleName || "⚠️ Missing scheduleName"}
-                  </Text>
-                  <View style={styles.scheduleActions}>
-                    <Pressable
-                      onPress={() => handleEditSchedule(schedule)}
-                      style={styles.actionButton}
-                    >
-                      <Ionicons name="create-outline" size={20} color={theme.colors.text} />
-                    </Pressable>
-                    <Pressable
-                      onPress={() => handleDeleteSchedule(schedule)}
-                      style={styles.actionButton}
-                    >
-                      <Ionicons name="trash-outline" size={20} color="red" />
-                    </Pressable>
+            schedules.map((schedule, idx) => {
+              const isActiveToday = Array.isArray(schedule.selectedDays) && schedule.selectedDays.includes(today);
+
+              return (
+                <View
+                  key={schedule.id ?? `${schedule.scheduleName}-${idx}`}
+                  style={[styles.scheduleCard, { backgroundColor: theme.colors.card }]}
+                >
+                  <View style={styles.scheduleHeader}>
+                    <Text style={[styles.scheduleName, { color: theme.colors.text }]}> {schedule.scheduleName || "⚠️ Missing scheduleName"} </Text>
+                    <View style={styles.scheduleActions}>
+                      <Pressable onPress={() => handleEditSchedule(schedule)} style={styles.actionButton}>
+                        <Ionicons name="create-outline" size={20} color={theme.colors.text} />
+                      </Pressable>
+                      <Pressable onPress={() => handleDeleteSchedule(schedule)} style={styles.actionButton}>
+                        <Ionicons name="trash-outline" size={20} color="red" />
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.scheduleDays, { color: theme.colors.text }]}> {Array.isArray(schedule.selectedDays) ? schedule.selectedDays.join(", ") : "No days selected"} </Text>
+
+                  <View style={[styles.badge, { backgroundColor: isActiveToday ? theme.colors.primary : "#aaa" }]}>
+                    <Text style={{ color: "white", fontWeight: "600", fontSize: 12 }}>
+                      {isActiveToday ? "Active Today" : "Not Active"}
+                    </Text>
                   </View>
                 </View>
-                <Text style={[styles.scheduleDays, { color: theme.colors.text }]}>
-                  {Array.isArray(schedule.selectedDays)
-                    ? schedule.selectedDays.join(", ")
-                    : "No days selected"}
-                </Text>
-              </View>
-            ))
+              );
+            })
           )}
 
-          {isPro ? (
-            <AppButton title="Create New Schedule" onPress={handleCreateNewSchedule} style={{ marginTop: 16 }} />
-          ) : schedules.length === 0 ? (
-            <AppButton title="Create Schedule" onPress={handleCreateNewSchedule} style={{ marginTop: 16 }} />
-          ) : (
-            <Text style={[styles.lockedText, { color: theme.colors.text + "99" }]}>
-              Upgrade to Pro to create multiple schedules.
-            </Text>
-          )}
+          <AppButton
+            title="Create New Schedule"
+            onPress={handleCreateNewSchedule}
+            
+            style={{
+              marginTop: 16,
+              opacity: !isPro && schedules.length > 0 ? 0.6 : 1,
+            }}
+          />
         </View>
 
         <View style={styles.section}>
@@ -216,6 +206,12 @@ export default function SettingsScreen() {
           />
         </View>
       </ScrollView>
+
+      <UpgradeModal
+        isVisible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onUpgrade={handleFakeUpgrade}
+      />
     </SafeAreaView>
   );
 }
@@ -240,34 +236,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginBottom: 32,
-  },
-  activeCard: {
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 32,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-  },
-  activeTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  activeName: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  activeDays: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-  noActive: {
-    fontSize: 16,
-    fontStyle: "italic",
-    marginTop: 8,
   },
   section: {
     marginBottom: 32,
@@ -321,12 +289,19 @@ const styles = StyleSheet.create({
   },
   scheduleDays: {
     fontSize: 14,
-    opacity: 0.7,
+    opacity: 0.8,
+    marginBottom: 8,
   },
   lockedText: {
     fontSize: 14,
     fontStyle: "italic",
     textAlign: "center",
     marginTop: 8,
+  },
+  badge: {
+    alignSelf: "flex-start",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 10,
   },
 });
