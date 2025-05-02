@@ -2,23 +2,25 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, View, StyleSheet } from 'react-native';
 import useTheme from '../hooks/useTheme';
 
-export default function FuseProgressBar({ totalMinutes, minutesLeft }) {
+export default function FuseProgressBar({ startTime, endTime }) {
   const { colors } = useTheme();
   const progressAnim = useRef(new Animated.Value(0)).current;
-  const prevProgress = useRef(1);
-
-  const progress = totalMinutes > 0 ? minutesLeft / totalMinutes : 0;
-  const clampedProgress = Math.max(0, Math.min(1, progress));
 
   useEffect(() => {
-    // Animate smoothly to new progress
+    const totalDuration = endTime - startTime;
+    const now = new Date();
+    const elapsed = now - startTime;
+    const initialProgress = Math.max(0, Math.min(1, elapsed / totalDuration));
+    progressAnim.setValue(initialProgress);
+
+    const remaining = endTime - now;
+
     Animated.timing(progressAnim, {
-      toValue: clampedProgress,
-      duration: 500,
-      useNativeDriver: false, // ❗ must be false for `width`
+      toValue: 1,
+      duration: remaining,
+      useNativeDriver: false,
     }).start();
-    prevProgress.current = clampedProgress;
-  }, [clampedProgress]);
+  }, [startTime, endTime]);
 
   const animatedWidth = progressAnim.interpolate({
     inputRange: [0, 1],

@@ -1,3 +1,5 @@
+// screens/HomeScreen.js
+
 import React, { useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView,
@@ -8,24 +10,27 @@ import {
   Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import CenteredView from '../components/CenteredView';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import useTheme from '../hooks/useTheme';
 import { useSettings, useSchedules } from '../context/AppContext';
 import { format } from 'date-fns';
 import FuseProgressBar from '../components/FuseProgressBar';
+// import { fetchWeather, getIconNameForWeather } from '../utils/weather';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
   const theme = useTheme();
   const { is24HourTime } = useSettings();
   const { schedules, schedulesLoaded, hasOnboarded } = useSchedules();
-  const scaleAnim = useRef(new Animated.Value(1)).current;
 
+  const scaleAnim = useRef(new Animated.Value(1)).current;
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeSchedule, setActiveSchedule] = useState(null);
   const [currentBlock, setCurrentBlock] = useState('Loading...');
   const [minutesLeft, setMinutesLeft] = useState(null);
+
+  // const [weather, setWeather] = useState(null);
+  // const [weatherIcon, setWeatherIcon] = useState('cloud');
 
   useEffect(() => {
     if (schedulesLoaded && schedules.length === 0 && !hasOnboarded) {
@@ -66,6 +71,19 @@ export default function HomeScreen() {
     findActiveSchedule(now);
   };
 
+  // useEffect(() => {
+  //   fetchWeather()
+  //     .then((data) => {
+  //       setWeather(data);
+  //       setWeatherIcon(getIconNameForWeather(data));
+  //     })
+  //     .catch((err) => {
+  //       console.warn('🌦️ Failed to fetch weather:', err.message);
+  //       setWeather(null);
+  //       setWeatherIcon('cloud');
+  //     });
+  // }, [currentTime]);
+
   const findActiveSchedule = (now) => {
     const today = format(now, 'EEE');
     const matchingSchedule = schedules.find(
@@ -86,15 +104,27 @@ export default function HomeScreen() {
     const allBlocks = [];
 
     schedule.periods.forEach((p) => {
-      allBlocks.push({ label: p.label, start: parseTime(p.startTime, now), end: parseTime(p.endTime, now) });
+      allBlocks.push({
+        label: p.label,
+        start: parseTime(p.startTime, now),
+        end: parseTime(p.endTime, now),
+      });
     });
 
     if (schedule.hasBreak) {
-      allBlocks.push({ label: 'Break', start: parseTime(schedule.breakStartTime, now), end: parseTime(schedule.breakEndTime, now) });
+      allBlocks.push({
+        label: 'Break',
+        start: parseTime(schedule.breakStartTime, now),
+        end: parseTime(schedule.breakEndTime, now),
+      });
     }
 
     if (schedule.hasLunch) {
-      allBlocks.push({ label: 'Lunch', start: parseTime(schedule.lunchStartTime, now), end: parseTime(schedule.lunchEndTime, now) });
+      allBlocks.push({
+        label: 'Lunch',
+        start: parseTime(schedule.lunchStartTime, now),
+        end: parseTime(schedule.lunchEndTime, now),
+      });
     }
 
     allBlocks.sort((a, b) => a.start - b.start);
@@ -173,20 +203,23 @@ export default function HomeScreen() {
     }).start();
   };
 
-  const hour = currentTime.getHours();
-  const greeting =
-    hour < 5 ? 'Good night' :
-    hour < 12 ? 'Good morning' :
-    hour < 17 ? 'Good afternoon' :
-    'Good evening';
+  const getGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour < 5) return 'Hello';
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    if (hour < 22) return 'Good evening';
+    return 'Hello';
+  };
 
-  const formattedTime = is24HourTime ? format(currentTime, 'HH:mm') : format(currentTime, 'h:mm a');
+  const formattedTime = is24HourTime
+    ? format(currentTime, 'HH:mm')
+    : format(currentTime, 'hh:mm a');
   const formattedDate = format(currentTime, 'EEEE, MMMM d');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <CenteredView style={{ padding: 24, alignItems: 'flex-start' }}>
-        {/* Settings Icon */}
+      <View style={{ padding: 24 }}>
         <Animated.View style={[styles.cogButton, { transform: [{ scale: scaleAnim }] }]}>
           <Pressable
             onPress={() => navigation.navigate('Settings')}
@@ -198,33 +231,38 @@ export default function HomeScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Weather and Time */}
-        <View style={{ position: 'relative', marginBottom: 32 }}>
-          <Ionicons
-            name="cloud-outline"
-            size={96}
-            color="rgba(0,0,0,0.05)"
-            style={styles.weatherIcon}
-          />
-          <Text style={[styles.greeting, { color: theme.colors.text }]}>{greeting}</Text>
+        {/* Greeting + Weather + Time */}
+        <View style={{ marginTop: 64 }}>
+          {/* {weatherIcon && (
+            <Feather
+              name={weatherIcon}
+              size={92}
+              color={theme.colors.text + '33'} 
+              style={{ marginBottom: 16 }}
+            />
+          )} */}
+          <Text style={[styles.greeting, { color: theme.colors.text }]}>{getGreeting()}</Text>
           <Text style={[styles.timeText, { color: theme.colors.text }]}>{formattedTime}</Text>
           <Text style={[styles.dateText, { color: theme.colors.text }]}>{formattedDate}</Text>
         </View>
 
-        {/* Current Block */}
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
           <Text style={[styles.periodText, { color: theme.colors.text }]}>{currentBlock}</Text>
           {minutesLeft !== null && (
-            <Text style={[styles.countdownText, { color: theme.colors.text }]}>{minutesLeft} min left</Text>
+            <Text style={[styles.countdownText, { color: theme.colors.text }]}>
+              {minutesLeft} min left
+            </Text>
           )}
-          {activeSchedule && currentBlock !== 'Before School' && currentBlock !== 'School Closed' && (
-            <FuseProgressBar
-              startTime={parseTime(getStartTimeForBlock(currentBlock, activeSchedule), currentTime)}
-              endTime={parseTime(getEndTimeForBlock(currentBlock, activeSchedule), currentTime)}
-            />
-          )}
+          {activeSchedule &&
+            currentBlock !== 'Before School' &&
+            currentBlock !== 'School Closed' && (
+              <FuseProgressBar
+                startTime={parseTime(getStartTimeForBlock(currentBlock, activeSchedule), currentTime)}
+                endTime={parseTime(getEndTimeForBlock(currentBlock, activeSchedule), currentTime)}
+              />
+            )}
         </View>
-      </CenteredView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -232,35 +270,30 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   cogButton: {
     position: 'absolute',
-    top: 48,
+    top: 24,
     right: 16,
   },
   pressableArea: {
     padding: 8,
   },
   greeting: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '600',
     marginBottom: 8,
   },
   timeText: {
     fontSize: 48,
     fontWeight: 'bold',
-    marginBottom: 4,
   },
   dateText: {
     fontSize: 18,
     opacity: 0.8,
-  },
-  weatherIcon: {
-    position: 'absolute',
-    top: -16,
-    left: -16,
-    zIndex: -1,
+    marginTop: 4,
   },
   card: {
+    marginTop: 32,
     width: '100%',
-    padding: 24,
+    padding: 20,
     borderRadius: 16,
     alignItems: 'center',
     elevation: 3,
