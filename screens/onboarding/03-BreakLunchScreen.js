@@ -1,3 +1,4 @@
+// screens/onboarding/BreakLunchScreen.js
 import React, { useState, useEffect, useRef } from "react";
 import {
   SafeAreaView,
@@ -12,7 +13,7 @@ import {
 import AppButton from "../../components/AppButton";
 import useTheme from "../../hooks/useTheme";
 import { format } from "date-fns";
-import DatePicker from 'react-native-date-picker';
+import DatePicker from "react-native-date-picker";
 import { useNavigation } from "@react-navigation/native";
 import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,8 +32,8 @@ export default function BreakLunchScreen({ navigation, route }) {
   } = route.params;
 
   const { colors } = useTheme();
-  const nav = useNavigation();
   const insets = useSafeAreaInsets();
+  const nav = useNavigation();
 
   const [hasBreak, setHasBreak] = useState(false);
   const [hasLunch, setHasLunch] = useState(false);
@@ -47,18 +48,14 @@ export default function BreakLunchScreen({ navigation, route }) {
     field: null,
   });
 
-  const titleFade = useRef(new Animated.Value(0)).current;
-  const breakFade = useRef(new Animated.Value(0)).current;
-  const breakSlide = useRef(new Animated.Value(20)).current;
-  const lunchFade = useRef(new Animated.Value(0)).current;
-  const lunchSlide = useRef(new Animated.Value(20)).current;
-  const nextFade = useRef(new Animated.Value(0)).current;
-
   const shimmerAnim = useRef(new Animated.Value(-100)).current;
   const shimmerFadeAnim = useRef(new Animated.Value(1)).current;
   const [showShimmer, setShowShimmer] = useState(true);
 
-  const stepFadeAnim = useRef(new Animated.Value(0)).current;
+  const stepFade = useRef(new Animated.Value(0)).current;
+  const breakFade = useRef(new Animated.Value(0)).current;
+  const lunchFade = useRef(new Animated.Value(0)).current;
+  const nextFade = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (edit && !existingSchedule) {
@@ -73,40 +70,17 @@ export default function BreakLunchScreen({ navigation, route }) {
   }, []);
 
   useEffect(() => {
-    Animated.sequence([
-      Animated.timing(titleFade, {
+    Animated.stagger(150, [
+      Animated.timing(breakFade, {
         toValue: 1,
         duration: 400,
         useNativeDriver: true,
       }),
-      Animated.parallel([
-        Animated.timing(breakFade, {
-          toValue: 1,
-          duration: 400,
-          delay: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(breakSlide, {
-          toValue: 0,
-          duration: 400,
-          delay: 100,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(lunchFade, {
-          toValue: 1,
-          duration: 400,
-          delay: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(lunchSlide, {
-          toValue: 0,
-          duration: 400,
-          delay: 100,
-          useNativeDriver: true,
-        }),
-      ]),
+      Animated.timing(lunchFade, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
     ]).start(() => {
       Animated.timing(nextFade, {
         toValue: 1,
@@ -115,10 +89,10 @@ export default function BreakLunchScreen({ navigation, route }) {
       }).start();
     });
 
-    Animated.timing(stepFadeAnim, {
+    Animated.timing(stepFade, {
       toValue: 1,
       duration: 400,
-      delay: 200,
+      delay: 300,
       useNativeDriver: true,
     }).start();
   }, []);
@@ -169,7 +143,7 @@ export default function BreakLunchScreen({ navigation, route }) {
 
   const handleTimeChange = (event, selectedTime) => {
     if (event.type === "dismissed" || !selectedTime) {
-      setPickerState({ isVisible: false, mode: "time", field: null });
+      setPickerState({ isVisible: false, field: null });
       return;
     }
 
@@ -188,7 +162,7 @@ export default function BreakLunchScreen({ navigation, route }) {
         break;
     }
 
-    setPickerState({ isVisible: false, mode: "time", field: null });
+    setPickerState({ isVisible: false, field: null });
   };
 
   const handleNext = () => {
@@ -225,7 +199,7 @@ export default function BreakLunchScreen({ navigation, route }) {
           shadowOpacity: 0.05,
           shadowRadius: 4,
           zIndex: 10,
-          opacity: stepFadeAnim,
+          opacity: stepFade,
         }}
       >
         <Text style={{ color: colors.text, fontWeight: "600", fontSize: 14 }}>
@@ -234,34 +208,15 @@ export default function BreakLunchScreen({ navigation, route }) {
       </Animated.View>
 
       <View style={styles.container}>
-        <Animated.Text
-          style={[
-            styles.title,
-            {
-              color: colors.text,
-              opacity: titleFade,
-              transform: [
-                {
-                  translateY: titleFade.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [20, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
+        <Text style={[styles.title, { color: colors.text }]}>
           Break and Lunch
-        </Animated.Text>
+        </Text>
 
+        {/* Break card */}
         <Animated.View
           style={[
             styles.card,
-            {
-              backgroundColor: colors.card,
-              opacity: breakFade,
-              transform: [{ translateY: breakSlide }],
-            },
+            { backgroundColor: colors.card, opacity: breakFade },
           ]}
         >
           <View style={styles.row}>
@@ -310,14 +265,11 @@ export default function BreakLunchScreen({ navigation, route }) {
           )}
         </Animated.View>
 
+        {/* Lunch card */}
         <Animated.View
           style={[
             styles.card,
-            {
-              backgroundColor: colors.card,
-              opacity: lunchFade,
-              transform: [{ translateY: lunchSlide }],
-            },
+            { backgroundColor: colors.card, opacity: lunchFade },
           ]}
         >
           <View style={styles.row}>
@@ -366,7 +318,8 @@ export default function BreakLunchScreen({ navigation, route }) {
           )}
         </Animated.View>
 
-        <View style={{ alignItems: "center", marginTop: 12, height: 22 }}>
+        {/* Shimmer hint */}
+        <View style={{ alignItems: "center", marginTop: 8, height: 24 }}>
           {showShimmer && (
             <View style={{ position: "relative", overflow: "hidden" }}>
               <Animated.Text
@@ -404,8 +357,13 @@ export default function BreakLunchScreen({ navigation, route }) {
           )}
         </View>
 
+        {/* Next button */}
         <Animated.View style={{ opacity: nextFade, width: "100%" }}>
-          <AppButton title="Next" onPress={handleNext} style={{ marginTop: 36 }} />
+          <AppButton
+            title="Next"
+            onPress={handleNext}
+            style={{ marginTop: 36 }}
+          />
         </Animated.View>
 
         {pickerState.isVisible && (

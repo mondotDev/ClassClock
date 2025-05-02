@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import DatePicker from 'react-native-date-picker';
 import AppButton from '../../components/AppButton';
+import ModalCard from '../../components/ModalCard';
 import useTheme from '../../hooks/useTheme';
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -74,6 +75,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
   const [showShimmer, setShowShimmer] = useState(true);
 
   const stepFadeAnim = useRef(new Animated.Value(0)).current;
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     Animated.loop(
@@ -184,11 +186,19 @@ export default function PeriodTimesScreen({ navigation, route }) {
   const allFilled = periods.every(p => p.startTime && p.endTime && p.label.trim().length > 0);
 
   const handleNext = () => {
+    setShowConfirmModal(true);
+  };
+
+  const proceedToBreakLunch = () => {
     const finalPeriods = periods.map(p => ({
       label: p.label,
       startTime: format(p.startTime, 'h:mm a'),
       endTime: format(p.endTime, 'h:mm a'),
     }));
+
+    setShowConfirmModal(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
     navigation.navigate('BreakLunch', {
       scheduleName,
       selectedDays,
@@ -232,6 +242,20 @@ export default function PeriodTimesScreen({ navigation, route }) {
           },
         ]}
       >
+        {index === periods.length - 1 && (
+          <Animated.Text
+            style={{
+              fontSize: 16,
+              color: colors.primary,
+              fontWeight: '600',
+              textAlign: 'center',
+              marginBottom: 12,
+              opacity: fadeAnim,
+            }}
+          >
+            🎉 All periods entered!
+          </Animated.Text>
+        )}
         <Text style={[styles.inputLabel, { color: colors.text }]}>Enter your class name</Text>
         <Animated.View style={[styles.inputWrapper, { transform: [{ scale: boxPulse }] }]}>
           <TextInput
@@ -269,7 +293,6 @@ export default function PeriodTimesScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      {/* Step indicator with insets */}
       <Animated.View
         style={{
           position: 'absolute',
@@ -290,7 +313,13 @@ export default function PeriodTimesScreen({ navigation, route }) {
         <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>Step 2 of 4</Text>
       </Animated.View>
 
-      <View style={{ flex: 1, paddingVertical: 32, justifyContent: 'space-around' }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'space-around',
+          paddingVertical: currentIndex === periods.length - 1 ? 16 : 32,
+        }}
+      >
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <Animated.FlatList
             data={periods}
@@ -397,6 +426,28 @@ export default function PeriodTimesScreen({ navigation, route }) {
           onChange={handleTimeChange}
         />
       )}
+
+      <ModalCard isVisible={showConfirmModal} onClose={() => setShowConfirmModal(false)}>
+        <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.text }}>
+          Continue to Break & Lunch?
+        </Text>
+        <Text style={{ color: colors.text, marginBottom: 20 }}>
+          You can always go back and edit period times later.
+        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <AppButton
+            title="Cancel"
+            style={{ flex: 1, marginRight: 8 }}
+            onPress={() => setShowConfirmModal(false)}
+          />
+          <AppButton
+            title="Continue"
+            style={{ flex: 1 }}
+            onPress={proceedToBreakLunch}
+            disabled={!allFilled}
+          />
+        </View>
+      </ModalCard>
     </SafeAreaView>
   );
 }

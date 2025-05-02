@@ -1,5 +1,4 @@
 // screens/onboarding/ScheduleNameScreen.js
-
 import React, { useState, useEffect, useRef } from 'react';
 import {
   SafeAreaView,
@@ -17,6 +16,7 @@ import { useSchedules } from '../../context/AppContext';
 import useTheme from '../../hooks/useTheme';
 import Toast from 'react-native-toast-message';
 import * as Haptics from 'expo-haptics';
+import ModalCard from '../../components/ModalCard'; // ✅ new
 
 const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -35,6 +35,7 @@ export default function ScheduleNameScreen({ route }) {
   const [selectedDays, setSelectedDays] = useState(initialDays);
   const [hasZeroPeriod, setHasZeroPeriod] = useState(initialZero);
   const [numPeriods, setNumPeriods] = useState(initialPeriods);
+  const [showConfirmModal, setShowConfirmModal] = useState(false); // ✅ new
 
   const navigation = useNavigation();
   const theme = useTheme();
@@ -109,6 +110,7 @@ export default function ScheduleNameScreen({ route }) {
 
   const handleNext = () => {
     const trimmedName = scheduleName.trim();
+
     if (!trimmedName) {
       Toast.show({
         type: 'error',
@@ -145,16 +147,7 @@ export default function ScheduleNameScreen({ route }) {
       return;
     }
 
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    navigation.navigate('PeriodTimes', {
-      scheduleName: trimmedName,
-      selectedDays,
-      hasZeroPeriod,
-      numPeriods,
-      edit,
-      existingSchedule,
-    });
+    setShowConfirmModal(true);
   };
 
   return (
@@ -289,6 +282,39 @@ export default function ScheduleNameScreen({ route }) {
 
         <AppButton title="Next" onPress={handleNext} />
       </View>
+
+      {/* ✅ Modal confirmation */}
+      <ModalCard isVisible={showConfirmModal} onClose={() => setShowConfirmModal(false)}>
+        <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.colors.text }}>
+          Proceed to Period Setup?
+        </Text>
+        <Text style={{ color: theme.colors.text, marginBottom: 20 }}>
+          You’ll set exact start and end times for each period next.
+        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <AppButton
+            title="Cancel"
+            style={{ flex: 1, marginRight: 8 }}
+            onPress={() => setShowConfirmModal(false)}
+          />
+          <AppButton
+            title="Continue"
+            style={{ flex: 1 }}
+            onPress={() => {
+              setShowConfirmModal(false);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              navigation.navigate('PeriodTimes', {
+                scheduleName: scheduleName.trim(),
+                selectedDays,
+                hasZeroPeriod,
+                numPeriods,
+                edit,
+                existingSchedule,
+              });
+            }}
+          />
+        </View>
+      </ModalCard>
     </SafeAreaView>
   );
 }
