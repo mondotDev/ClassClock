@@ -1,3 +1,5 @@
+// screens/onboarding/PeriodTimesScreen.js
+
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   SafeAreaView,
@@ -34,7 +36,6 @@ export default function PeriodTimesScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const ITEM_WIDTH = width * 0.92;
-
   const total = numPeriods + (hasZeroPeriod ? 1 : 0);
 
   const generateDefaultPeriods = () => {
@@ -65,64 +66,31 @@ export default function PeriodTimesScreen({ navigation, route }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pickerState, setPickerState] = useState({ isVisible: false, mode: 'time', field: null });
 
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const boxPulse = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const nextButtonOpacity = useRef(new Animated.Value(0)).current;
-
   const shimmerAnim = useRef(new Animated.Value(-100)).current;
   const shimmerFadeAnim = useRef(new Animated.Value(1)).current;
-  const [showShimmer, setShowShimmer] = useState(true);
-
   const stepFadeAnim = useRef(new Animated.Value(0)).current;
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showShimmer, setShowShimmer] = useState(true);
+
+  const boxPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.1, duration: 300, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-      ]),
-      { iterations: 2 }
-    ).start();
-  }, [currentIndex]);
-
-  useEffect(() => {
-    Animated.sequence([
-      Animated.timing(boxPulse, {
-        toValue: 1.05,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(boxPulse, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
-      delay: 100,
       useNativeDriver: true,
     }).start();
 
     Animated.timing(stepFadeAnim, {
       toValue: 1,
       duration: 400,
-      delay: 200,
+      delay: 100,
       useNativeDriver: true,
     }).start();
   }, []);
-
-  useEffect(() => {
-    Animated.timing(nextButtonOpacity, {
-      toValue: currentIndex === periods.length - 1 ? 1 : 0,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [currentIndex]);
 
   useEffect(() => {
     if (currentIndex !== 0 || !showShimmer) return;
@@ -146,7 +114,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
     shimmerLoop.start();
 
     const interval = setInterval(() => {
-      loopCount += 1;
+      loopCount++;
       if (loopCount >= 3) {
         shimmerLoop.stop();
         Animated.timing(shimmerFadeAnim, {
@@ -164,12 +132,22 @@ export default function PeriodTimesScreen({ navigation, route }) {
     };
   }, [currentIndex, showShimmer]);
 
-  const openTimePicker = (idx, type) =>
+  useEffect(() => {
+    Animated.timing(nextButtonOpacity, {
+      toValue: currentIndex === periods.length - 1 ? 1 : 0,
+      duration: 400,
+      useNativeDriver: true,
+    }).start();
+  }, [currentIndex]);
+
+  const openTimePicker = (idx, type) => {
     setPickerState({ isVisible: true, mode: 'time', field: { idx, type } });
+  };
 
   const handleTimeChange = (event, selectedTime) => {
-    if (event.type === 'dismissed' || !selectedTime)
+    if (event.type === 'dismissed' || !selectedTime) {
       return setPickerState({ isVisible: false, mode: 'time', field: null });
+    }
     const { idx, type } = pickerState.field;
     const updated = [...periods];
     updated[idx][type === 'start' ? 'startTime' : 'endTime'] = selectedTime;
@@ -183,7 +161,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
     setPeriods(updated);
   };
 
-  const allFilled = periods.every(p => p.startTime && p.endTime && p.label.trim().length > 0);
+  const allFilled = periods.every(p => p.label.trim() && p.startTime && p.endTime);
 
   const handleNext = () => {
     setShowConfirmModal(true);
@@ -196,8 +174,8 @@ export default function PeriodTimesScreen({ navigation, route }) {
       endTime: format(p.endTime, 'h:mm a'),
     }));
 
-    setShowConfirmModal(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowConfirmModal(false);
 
     navigation.navigate('BreakLunch', {
       scheduleName,
@@ -210,7 +188,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
     });
   };
 
-  const handleMomentumScrollEnd = (e) => {
+  const handleMomentumScrollEnd = e => {
     const index = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
     if (index !== currentIndex) {
       Haptics.selectionAsync();
@@ -242,20 +220,6 @@ export default function PeriodTimesScreen({ navigation, route }) {
           },
         ]}
       >
-        {index === periods.length - 1 && (
-          <Animated.Text
-            style={{
-              fontSize: 16,
-              color: colors.primary,
-              fontWeight: '600',
-              textAlign: 'center',
-              marginBottom: 12,
-              opacity: fadeAnim,
-            }}
-          >
-            🎉 All periods entered!
-          </Animated.Text>
-        )}
         <Text style={[styles.inputLabel, { color: colors.text }]}>Enter your class name</Text>
         <Animated.View style={[styles.inputWrapper, { transform: [{ scale: boxPulse }] }]}>
           <TextInput
@@ -313,38 +277,24 @@ export default function PeriodTimesScreen({ navigation, route }) {
         <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>Step 2 of 4</Text>
       </Animated.View>
 
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'space-around',
-          paddingVertical: currentIndex === periods.length - 1 ? 16 : 32,
-        }}
-      >
-        <View style={{ flex: 1, justifyContent: 'center' }}>
-          <Animated.FlatList
-            data={periods}
-            keyExtractor={(_, i) => i.toString()}
-            renderItem={renderItem}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            decelerationRate="fast"
-            bounces={true}
-            snapToInterval={ITEM_WIDTH}
-            disableIntervalMomentum
-            initialNumToRender={3}
-            maxToRenderPerBatch={5}
-            windowSize={5}
-            contentContainerStyle={{
-              paddingHorizontal: (width - ITEM_WIDTH) / 2,
-            }}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-              { useNativeDriver: false }
-            )}
-            onMomentumScrollEnd={handleMomentumScrollEnd}
-          />
-        </View>
+      <View style={{ flex: 1, justifyContent: 'space-around', paddingVertical: 32 }}>
+        <Animated.FlatList
+          data={periods}
+          keyExtractor={(_, i) => i.toString()}
+          renderItem={renderItem}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToInterval={ITEM_WIDTH}
+          disableIntervalMomentum
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: false }
+          )}
+          onMomentumScrollEnd={handleMomentumScrollEnd}
+          contentContainerStyle={{ paddingHorizontal: (width - ITEM_WIDTH) / 2 }}
+        />
 
         {currentIndex === 0 && showShimmer && (
           <View style={{ alignItems: 'center', marginTop: 12 }}>

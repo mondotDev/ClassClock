@@ -1,5 +1,3 @@
-// screens/HomeScreen.js
-
 import React, { useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView,
@@ -29,20 +27,10 @@ export default function HomeScreen() {
   const [currentBlock, setCurrentBlock] = useState('Loading...');
   const [minutesLeft, setMinutesLeft] = useState(null);
 
-  // 🔍 Debug logs
-  useEffect(() => {
-    console.log('📅 Schedules:', schedules);
-    console.log('✅ Loaded:', schedulesLoaded);
-    console.log('🎯 Today:', format(currentTime, 'EEE'));
-  }, [schedules, schedulesLoaded]);
-
   useEffect(() => {
     if (schedulesLoaded && schedules.length === 0 && !hasOnboarded) {
       const timeout = setTimeout(() => {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'ScheduleName' }],
-        });
+        navigation.reset({ index: 0, routes: [{ name: 'ScheduleName' }] });
       }, 100);
       return () => clearTimeout(timeout);
     }
@@ -85,11 +73,9 @@ export default function HomeScreen() {
     );
 
     if (matchingSchedule) {
-      console.log('✅ Matched Schedule:', matchingSchedule.scheduleName);
       setActiveSchedule(matchingSchedule);
       updateCurrentBlock(now, matchingSchedule);
     } else {
-      console.warn('⚠️ No schedule matches today.');
       setActiveSchedule(null);
       setCurrentBlock('No Schedule Listed');
       setMinutesLeft(null);
@@ -187,12 +173,20 @@ export default function HomeScreen() {
     }).start();
   };
 
-  const formattedTime = is24HourTime ? format(currentTime, 'HH:mm') : format(currentTime, 'hh:mm a');
+  const hour = currentTime.getHours();
+  const greeting =
+    hour < 5 ? 'Good night' :
+    hour < 12 ? 'Good morning' :
+    hour < 17 ? 'Good afternoon' :
+    'Good evening';
+
+  const formattedTime = is24HourTime ? format(currentTime, 'HH:mm') : format(currentTime, 'h:mm a');
   const formattedDate = format(currentTime, 'EEEE, MMMM d');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <CenteredView style={{ padding: 24 }}>
+      <CenteredView style={{ padding: 24, alignItems: 'flex-start' }}>
+        {/* Settings Icon */}
         <Animated.View style={[styles.cogButton, { transform: [{ scale: scaleAnim }] }]}>
           <Pressable
             onPress={() => navigation.navigate('Settings')}
@@ -204,11 +198,20 @@ export default function HomeScreen() {
           </Pressable>
         </Animated.View>
 
-        <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+        {/* Weather and Time */}
+        <View style={{ position: 'relative', marginBottom: 32 }}>
+          <Ionicons
+            name="cloud-outline"
+            size={96}
+            color="rgba(0,0,0,0.05)"
+            style={styles.weatherIcon}
+          />
+          <Text style={[styles.greeting, { color: theme.colors.text }]}>{greeting}</Text>
           <Text style={[styles.timeText, { color: theme.colors.text }]}>{formattedTime}</Text>
           <Text style={[styles.dateText, { color: theme.colors.text }]}>{formattedDate}</Text>
         </View>
 
+        {/* Current Block */}
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
           <Text style={[styles.periodText, { color: theme.colors.text }]}>{currentBlock}</Text>
           {minutesLeft !== null && (
@@ -235,26 +238,36 @@ const styles = StyleSheet.create({
   pressableArea: {
     padding: 8,
   },
+  greeting: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  timeText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  dateText: {
+    fontSize: 18,
+    opacity: 0.8,
+  },
+  weatherIcon: {
+    position: 'absolute',
+    top: -16,
+    left: -16,
+    zIndex: -1,
+  },
   card: {
     width: '100%',
     padding: 24,
     borderRadius: 16,
     alignItems: 'center',
-    marginVertical: 12,
     elevation: 3,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 8,
-  },
-  timeText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  dateText: {
-    fontSize: 18,
-    opacity: 0.8,
   },
   periodText: {
     fontSize: 24,
