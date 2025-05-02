@@ -1,4 +1,4 @@
-// context/AppContext.js
+// AppContext.js
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,7 +12,7 @@ export function AppProvider({ children }) {
 
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [is24HourTime, setIs24HourTime] = useState(false);
-  const [isPro, setIsPro] = useState(true);
+  const [isPro, setIsProRaw] = useState(true);
   const [schedulesLoaded, setSchedulesLoaded] = useState(false);
   const [hasOnboarded, setHasOnboarded] = useState(false);
 
@@ -24,6 +24,7 @@ export function AppProvider({ children }) {
         const storedDark = await AsyncStorage.getItem('@isDarkMode');
         const stored24 = await AsyncStorage.getItem('@is24HourTime');
         const storedHasOnboarded = await AsyncStorage.getItem('@hasOnboarded');
+        const storedPro = await AsyncStorage.getItem('@isPro');
 
         if (storedSchedules) {
           const parsed = JSON.parse(storedSchedules);
@@ -37,6 +38,7 @@ export function AppProvider({ children }) {
         if (storedDark) setIsDarkMode(storedDark === 'true');
         if (stored24) setIs24HourTime(stored24 === 'true');
         if (storedHasOnboarded) setHasOnboarded(storedHasOnboarded === 'true');
+        if (storedPro) setIsProRaw(storedPro === 'true');
       } catch (e) {
         console.error('Failed to load app data', e);
       } finally {
@@ -72,10 +74,20 @@ export function AppProvider({ children }) {
   }, [is24HourTime, schedulesLoaded]);
 
   useEffect(() => {
+    if (schedulesLoaded) {
+      AsyncStorage.setItem('@isPro', isPro.toString());
+    }
+  }, [isPro, schedulesLoaded]);
+
+  useEffect(() => {
     if (schedulesLoaded && schedules.length === 0) {
       setActiveScheduleId(null);
     }
   }, [schedules, schedulesLoaded]);
+
+  const setIsPro = (value) => {
+    setIsProRaw(value);
+  };
 
   const addSchedule = (newSchedule) => {
     if (!newSchedule.selectedDays || !Array.isArray(newSchedule.selectedDays) || newSchedule.selectedDays.length === 0) {
@@ -105,7 +117,7 @@ export function AppProvider({ children }) {
     <SchedulesContext.Provider
       value={{
         schedules,
-        setSchedules, // ✅ Exposed for reset logic
+        setSchedules,
         schedulesLoaded,
         activeScheduleId,
         setActiveScheduleId,
