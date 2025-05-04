@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -6,11 +6,13 @@ import {
   StyleSheet,
   ScrollView,
   Animated,
-} from 'react-native';
-import AppButton from '../../components/AppButton';
-import useTheme from '../../hooks/useTheme';
-import { useNavigation } from '@react-navigation/native';
-import { useSchedules } from '../../context/AppContext';
+} from "react-native";
+import AppButton from "../../components/AppButton";
+import useTheme from "../../hooks/useTheme";
+import { useNavigation } from "@react-navigation/native";
+import { useSchedules } from "../../context/AppContext";
+import StepBadge from "../../components/StepBadge";
+import ShimmerHint from "../../components/ShimmerHint";
 
 export default function ReviewScheduleScreen({ route }) {
   const {
@@ -35,7 +37,9 @@ export default function ReviewScheduleScreen({ route }) {
   const shimmerTranslate = useRef(new Animated.Value(-100)).current;
 
   const fadeAnims = useRef(periods.map(() => new Animated.Value(0))).current;
-  const translateAnims = useRef(periods.map(() => new Animated.Value(20))).current;
+  const translateAnims = useRef(
+    periods.map(() => new Animated.Value(20))
+  ).current;
 
   const { addSchedule, updateSchedule } = useSchedules();
 
@@ -90,7 +94,7 @@ export default function ReviewScheduleScreen({ route }) {
         Animated.timing(shimmerFade, {
           toValue: 0,
           duration: 500,
-          useNativeDriver: false, // ⚠️ required for height animation
+          useNativeDriver: false,
         }).start();
         clearInterval(interval);
       }
@@ -128,21 +132,19 @@ export default function ReviewScheduleScreen({ route }) {
 
       nav.reset({
         index: 0,
-        routes: [{ name: 'Home' }],
+        routes: [{ name: "Home" }],
       });
     } catch (error) {
-      console.error('Failed to save schedule:', error);
+      console.error("Failed to save schedule:", error);
     }
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={styles.headerContainer}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          Review Your Schedule
-        </Text>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>Step 4 of 4</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Review Your Schedule</Text>
+        <View style={styles.badgeWrapper}>
+          <StepBadge step={4} totalSteps={4} colors={colors} />
         </View>
       </View>
 
@@ -150,72 +152,42 @@ export default function ReviewScheduleScreen({ route }) {
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         scrollEventThrottle={16}
-        onScroll={periods.length > 4 ? () => {
-          Animated.timing(shimmerFade, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: false,
-          }).start();
-        } : undefined}
+        onScroll={
+          periods.length > 4
+            ? () => {
+                Animated.timing(shimmerFade, {
+                  toValue: 0,
+                  duration: 500,
+                  useNativeDriver: false,
+                }).start();
+              }
+            : undefined
+        }
       >
         <Text style={[styles.label, { color: colors.text }]}>Schedule Name:</Text>
         <Text style={[styles.value, { color: colors.primary }]}>{scheduleName}</Text>
 
         <Text style={[styles.label, { color: colors.text }]}>Days Selected:</Text>
-        <Text style={[styles.value, { color: colors.primary }]}>
-          {selectedDays.join(', ')}
-        </Text>
+        <Text style={[styles.value, { color: colors.primary }]}>{selectedDays.join(", ")}</Text>
 
-        {typeof hasZeroPeriod !== 'undefined' && (
+        {typeof hasZeroPeriod !== "undefined" && (
           <>
             <Text style={[styles.label, { color: colors.text }]}>Zero Period:</Text>
-            <Text style={styles.value}>{hasZeroPeriod ? 'Yes' : 'No'}</Text>
+            <Text style={styles.value}>{hasZeroPeriod ? "Yes" : "No"}</Text>
           </>
         )}
 
         <Text style={[styles.label, { color: colors.text }]}>Class Periods:</Text>
 
-        {/* Always mounted shimmer hint with animated fade and height */}
-        <Animated.View
-          style={[
-            styles.shimmerWrapper,
-            {
-              height: shimmerFade.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 24],
-              }),
-              opacity: shimmerFade,
-            },
-          ]}
-        >
-          {periods.length > 4 && (
-            <View style={{ position: 'relative', overflow: 'hidden' }}>
-              <Animated.Text
-                style={[
-                  styles.shimmerText,
-                  {
-                    color: '#ffffff',
-                    opacity: shimmerFade,
-                  },
-                ]}
-              >
-                Scroll to see the rest ↓
-              </Animated.Text>
-              <Animated.View
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '100%',
-                  transform: [{ translateX: shimmerTranslate }],
-                }}
-              >
-                <View style={styles.shimmerOverlay} />
-              </Animated.View>
-            </View>
-          )}
-        </Animated.View>
+        {periods.length > 4 && (
+          <ShimmerHint
+            text="Scroll to see the rest ↓"
+            shimmerAnim={shimmerTranslate}
+            shimmerFadeAnim={shimmerFade}
+            colors={colors}
+            containerStyle={{ marginTop: 12 }}
+          />
+        )}
 
         {periods.map((p, i) => (
           <Animated.View
@@ -248,7 +220,7 @@ export default function ReviewScheduleScreen({ route }) {
           </>
         )}
 
-        <AppButton title="Finish" onPress={handleFinish} style={{ marginTop: 36 }} />
+        <AppButton title="Finish" onPress={handleFinish} style={{ marginTop: 48 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -257,70 +229,46 @@ export default function ReviewScheduleScreen({ route }) {
 const styles = StyleSheet.create({
   headerContainer: {
     paddingHorizontal: 24,
-    paddingTop: 64,
-    paddingBottom: 12,
-    position: 'relative',
+    marginTop: 48,
+    marginBottom: 16,
+    position: "relative",
+  },
+  badgeWrapper: {
+    position: "absolute",
+    top: 0,
+    right: 16,
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  badge: {
-    position: 'absolute',
-    right: 16,
-    top: 40,
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    elevation: 2,
-  },
-  badgeText: {
-    fontWeight: '600',
-    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
   },
   scrollContent: {
     paddingHorizontal: 24,
     paddingBottom: 100,
   },
   label: {
-    marginTop: 16,
+    marginTop: 24,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   value: {
     fontSize: 16,
     marginTop: 4,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   card: {
     padding: 16,
     borderRadius: 12,
-    marginTop: 12,
-    shadowColor: '#000',
+    marginTop: 16,
+    shadowColor: "#000",
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 1,
   },
   periodLabel: {
-    fontWeight: '700',
+    fontWeight: "700",
     fontSize: 16,
     marginBottom: 4,
-  },
-  shimmerWrapper: {
-    alignItems: 'center',
-    marginTop: 12,
-    overflow: 'hidden',
-  },
-  shimmerText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  shimmerOverlay: {
-    width: 80,
-    height: '100%',
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    borderRadius: 4,
   },
 });

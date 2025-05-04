@@ -1,7 +1,6 @@
 // screens/onboarding/BreakLunchScreen.js
 import React, { useState, useEffect, useRef } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -18,7 +17,10 @@ import { useNavigation } from "@react-navigation/native";
 import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import StepBadge from "../../components/StepBadge";
+import ContinueModal from "../../components/ContinueModal";
+import * as Haptics from "expo-haptics";
+import OnboardingContainer from "../../components/OnboardingContainer";
 
 export default function BreakLunchScreen({ navigation, route }) {
   const {
@@ -32,7 +34,6 @@ export default function BreakLunchScreen({ navigation, route }) {
   } = route.params;
 
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   const nav = useNavigation();
 
   const [hasBreak, setHasBreak] = useState(false);
@@ -56,6 +57,8 @@ export default function BreakLunchScreen({ navigation, route }) {
   const breakFade = useRef(new Animated.Value(0)).current;
   const lunchFade = useRef(new Animated.Value(0)).current;
   const nextFade = useRef(new Animated.Value(0)).current;
+
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     if (edit && !existingSchedule) {
@@ -166,6 +169,12 @@ export default function BreakLunchScreen({ navigation, route }) {
   };
 
   const handleNext = () => {
+    setShowConfirmModal(true);
+  };
+
+  const proceedToReview = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setShowConfirmModal(false);
     navigation.navigate("ReviewSchedule", {
       scheduleName,
       selectedDays,
@@ -184,216 +193,154 @@ export default function BreakLunchScreen({ navigation, route }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <Animated.View
-        style={{
-          position: "absolute",
-          top: insets.top + 8,
-          right: 16,
-          backgroundColor: colors.card,
-          paddingHorizontal: 12,
-          paddingVertical: 6,
-          borderRadius: 12,
-          elevation: 2,
-          shadowColor: "#000",
-          shadowOpacity: 0.05,
-          shadowRadius: 4,
-          zIndex: 10,
-          opacity: stepFade,
-        }}
-      >
-        <Text style={{ color: colors.text, fontWeight: "600", fontSize: 14 }}>
-          Step 3 of 4
-        </Text>
-      </Animated.View>
+    <OnboardingContainer>
+      <StepBadge step={3} totalSteps={4} colors={colors} fadeAnim={stepFade} />
 
-      <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.text }]}>
-          Break and Lunch
-        </Text>
+      <Text style={[styles.title, { color: colors.text }]}>
+        Break and Lunch
+      </Text>
 
-        {/* Break card */}
-        <Animated.View
-          style={[
-            styles.card,
-            { backgroundColor: colors.card, opacity: breakFade },
-          ]}
-        >
-          <View style={styles.row}>
-            <View style={styles.labelRow}>
-              <Ionicons
-                name="cafe-outline"
-                size={20}
-                color={colors.text}
-                style={{ marginRight: 8 }}
-              />
-              <Text style={[styles.label, { color: colors.text }]}>
-                Include Break
-              </Text>
-            </View>
-            <Switch
-              value={hasBreak}
-              onValueChange={setHasBreak}
-              thumbColor={hasBreak ? colors.primary : "#ccc"}
-            />
+      <Animated.View style={[styles.card, { backgroundColor: colors.card, opacity: breakFade }]}>
+        <View style={styles.row}>
+          <View style={styles.labelRow}>
+            <Ionicons name="cafe-outline" size={20} color={colors.text} style={{ marginRight: 8 }} />
+            <Text style={[styles.label, { color: colors.text }]}>Include Break</Text>
           </View>
-
-          {hasBreak && (
-            <View style={styles.timeRow}>
-              <Pressable
-                style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                onPress={() => openTimePicker("breakStart")}
-              >
-                <Text
-                  style={[styles.timeButtonText, { color: colors.background }]}
-                >
-                  Start: {format(breakStartTime, "h:mm a")}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                onPress={() => openTimePicker("breakEnd")}
-              >
-                <Text
-                  style={[styles.timeButtonText, { color: colors.background }]}
-                >
-                  End: {format(breakEndTime, "h:mm a")}
-                </Text>
-              </Pressable>
-            </View>
-          )}
-        </Animated.View>
-
-        {/* Lunch card */}
-        <Animated.View
-          style={[
-            styles.card,
-            { backgroundColor: colors.card, opacity: lunchFade },
-          ]}
-        >
-          <View style={styles.row}>
-            <View style={styles.labelRow}>
-              <Ionicons
-                name="restaurant-outline"
-                size={20}
-                color={colors.text}
-                style={{ marginRight: 8 }}
-              />
-              <Text style={[styles.label, { color: colors.text }]}>
-                Include Lunch
-              </Text>
-            </View>
-            <Switch
-              value={hasLunch}
-              onValueChange={setHasLunch}
-              thumbColor={hasLunch ? colors.primary : "#ccc"}
-            />
-          </View>
-
-          {hasLunch && (
-            <View style={styles.timeRow}>
-              <Pressable
-                style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                onPress={() => openTimePicker("lunchStart")}
-              >
-                <Text
-                  style={[styles.timeButtonText, { color: colors.background }]}
-                >
-                  Start: {format(lunchStartTime, "h:mm a")}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.timeButton, { backgroundColor: colors.primary }]}
-                onPress={() => openTimePicker("lunchEnd")}
-              >
-                <Text
-                  style={[styles.timeButtonText, { color: colors.background }]}
-                >
-                  End: {format(lunchEndTime, "h:mm a")}
-                </Text>
-              </Pressable>
-            </View>
-          )}
-        </Animated.View>
-
-        {/* Shimmer hint */}
-        <View style={{ alignItems: "center", marginTop: 8, height: 24 }}>
-          {showShimmer && (
-            <View style={{ position: "relative", overflow: "hidden" }}>
-              <Animated.Text
-                style={{
-                  fontSize: 15,
-                  fontWeight: "600",
-                  color: colors.border,
-                  opacity: shimmerFadeAnim,
-                }}
-              >
-                Optional – skip if not needed →
-              </Animated.Text>
-              <Animated.View
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: "100%",
-                  transform: [{ translateX: shimmerAnim }],
-                }}
-              >
-                <LinearGradient
-                  colors={[
-                    "transparent",
-                    "rgba(255,255,255,0.4)",
-                    "transparent",
-                  ]}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={{ width: 100, height: "100%" }}
-                />
-              </Animated.View>
-            </View>
-          )}
+          <Switch
+            value={hasBreak}
+            onValueChange={setHasBreak}
+            thumbColor={hasBreak ? colors.primary : "#ccc"}
+          />
         </View>
 
-        {/* Next button */}
-        <Animated.View style={{ opacity: nextFade, width: "100%" }}>
-          <AppButton
-            title="Next"
-            onPress={handleNext}
-            style={{ marginTop: 36 }}
-          />
-        </Animated.View>
+        {hasBreak && (
+          <View style={styles.timeRow}>
+            <Pressable
+              style={[styles.timeButton, { backgroundColor: colors.primary }]}
+              onPress={() => openTimePicker("breakStart")}
+            >
+              <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                Start: {format(breakStartTime, "h:mm a")}
+              </Text>
+            </Pressable>
 
-        {pickerState.isVisible && (
-          <DatePicker
-            value={
-              pickerState.field === "breakStart"
-                ? breakStartTime
-                : pickerState.field === "breakEnd"
-                ? breakEndTime
-                : pickerState.field === "lunchStart"
-                ? lunchStartTime
-                : lunchEndTime
-            }
-            mode={pickerState.mode}
-            is24Hour={false}
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={handleTimeChange}
+            <Pressable
+              style={[styles.timeButton, { backgroundColor: colors.primary }]}
+              onPress={() => openTimePicker("breakEnd")}
+            >
+              <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                End: {format(breakEndTime, "h:mm a")}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+      </Animated.View>
+
+      <Animated.View style={[styles.card, { backgroundColor: colors.card, opacity: lunchFade }]}>
+        <View style={styles.row}>
+          <View style={styles.labelRow}>
+            <Ionicons name="restaurant-outline" size={20} color={colors.text} style={{ marginRight: 8 }} />
+            <Text style={[styles.label, { color: colors.text }]}>Include Lunch</Text>
+          </View>
+          <Switch
+            value={hasLunch}
+            onValueChange={setHasLunch}
+            thumbColor={hasLunch ? colors.primary : "#ccc"}
           />
+        </View>
+
+        {hasLunch && (
+          <View style={styles.timeRow}>
+            <Pressable
+              style={[styles.timeButton, { backgroundColor: colors.primary }]}
+              onPress={() => openTimePicker("lunchStart")}
+            >
+              <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                Start: {format(lunchStartTime, "h:mm a")}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.timeButton, { backgroundColor: colors.primary }]}
+              onPress={() => openTimePicker("lunchEnd")}
+            >
+              <Text style={[styles.timeButtonText, { color: colors.background }]}>
+                End: {format(lunchEndTime, "h:mm a")}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+      </Animated.View>
+
+      <View style={{ alignItems: "center", marginTop: 8, height: 24 }}>
+        {showShimmer && (
+          <View style={{ position: "relative", overflow: "hidden" }}>
+            <Animated.Text
+              style={{
+                fontSize: 15,
+                fontWeight: "600",
+                color: colors.border,
+                opacity: shimmerFadeAnim,
+              }}
+            >
+              Optional – skip if not needed →
+            </Animated.Text>
+            <Animated.View
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: "100%",
+                transform: [{ translateX: shimmerAnim }],
+              }}
+            >
+              <LinearGradient
+                colors={["transparent", "rgba(255,255,255,0.4)", "transparent"]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={{ width: 100, height: "100%" }}
+              />
+            </Animated.View>
+          </View>
         )}
       </View>
-    </SafeAreaView>
+
+      <Animated.View style={{ opacity: nextFade, width: "100%" }}>
+        <AppButton title="Next" onPress={handleNext} style={{ marginTop: 36 }} />
+      </Animated.View>
+
+      {pickerState.isVisible && (
+        <DatePicker
+          value={
+            pickerState.field === "breakStart"
+              ? breakStartTime
+              : pickerState.field === "breakEnd"
+              ? breakEndTime
+              : pickerState.field === "lunchStart"
+              ? lunchStartTime
+              : lunchEndTime
+          }
+          mode={pickerState.mode}
+          is24Hour={false}
+          display={Platform.OS === "ios" ? "spinner" : "default"}
+          onChange={handleTimeChange}
+        />
+      )}
+
+      <ContinueModal
+        visible={showConfirmModal}
+        onCancel={() => setShowConfirmModal(false)}
+        onContinue={proceedToReview}
+        title="Continue to Review?"
+        message="You can still go back and edit your schedule later."
+        colors={colors}
+      />
+    </OnboardingContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginTop: 32,
-    padding: 24,
-    flex: 1,
-  },
   title: {
     fontSize: 24,
     fontWeight: "700",
