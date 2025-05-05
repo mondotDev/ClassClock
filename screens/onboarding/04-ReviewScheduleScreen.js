@@ -1,4 +1,6 @@
-import React, { useRef, useEffect, useState } from "react";
+// screens/onboarding/ReviewScheduleScreen.js
+
+import React, { useRef, useEffect } from "react";
 import {
   SafeAreaView,
   View,
@@ -13,6 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useSchedules } from "../../context/AppContext";
 import StepBadge from "../../components/StepBadge";
 import ShimmerHint from "../../components/ShimmerHint";
+import useShimmerHint from "../../hooks/useShimmerHint";
 
 export default function ReviewScheduleScreen({ route }) {
   const {
@@ -32,16 +35,17 @@ export default function ReviewScheduleScreen({ route }) {
 
   const { colors } = useTheme();
   const nav = useNavigation();
-
-  const shimmerFade = useRef(new Animated.Value(1)).current;
-  const shimmerTranslate = useRef(new Animated.Value(-100)).current;
+  const { addSchedule, updateSchedule } = useSchedules();
 
   const fadeAnims = useRef(periods.map(() => new Animated.Value(0))).current;
   const translateAnims = useRef(
     periods.map(() => new Animated.Value(20))
   ).current;
 
-  const { addSchedule, updateSchedule } = useSchedules();
+  const { shimmerAnim, shimmerFadeAnim, showShimmer } = useShimmerHint({
+    trigger: periods.length > 4,
+    cycles: 3,
+  });
 
   useEffect(() => {
     const animations = periods.map((_, i) =>
@@ -61,49 +65,6 @@ export default function ReviewScheduleScreen({ route }) {
       ])
     );
     Animated.stagger(100, animations).start();
-  }, []);
-
-  useEffect(() => {
-    if (periods.length <= 4) return;
-
-    shimmerFade.setValue(1);
-    shimmerTranslate.setValue(-100);
-
-    let loopCount = 0;
-    const shimmerLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerTranslate, {
-          toValue: 300,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerTranslate, {
-          toValue: -100,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    shimmerLoop.start();
-
-    const interval = setInterval(() => {
-      loopCount++;
-      if (loopCount >= 3) {
-        shimmerLoop.stop();
-        Animated.timing(shimmerFade, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: false,
-        }).start();
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => {
-      shimmerLoop.stop();
-      clearInterval(interval);
-    };
   }, []);
 
   const handleFinish = () => {
@@ -155,7 +116,7 @@ export default function ReviewScheduleScreen({ route }) {
         onScroll={
           periods.length > 4
             ? () => {
-                Animated.timing(shimmerFade, {
+                Animated.timing(shimmerFadeAnim, {
                   toValue: 0,
                   duration: 500,
                   useNativeDriver: false,
@@ -179,11 +140,11 @@ export default function ReviewScheduleScreen({ route }) {
 
         <Text style={[styles.label, { color: colors.text }]}>Class Periods:</Text>
 
-        {periods.length > 4 && (
+        {periods.length > 4 && showShimmer && (
           <ShimmerHint
             text="Scroll to see the rest ↓"
-            shimmerAnim={shimmerTranslate}
-            shimmerFadeAnim={shimmerFade}
+            shimmerAnim={shimmerAnim}
+            shimmerFadeAnim={shimmerFadeAnim}
             colors={colors}
             containerStyle={{ marginTop: 12 }}
           />

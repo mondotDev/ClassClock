@@ -1,6 +1,6 @@
 // screens/onboarding/PeriodTimesScreen.js
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -19,6 +19,7 @@ import ClassCard from "../../components/ClassCard";
 import AppButton from "../../components/AppButton";
 import ContinueModal from "../../components/ContinueModal";
 import StepBadge from "../../components/StepBadge";
+import useShimmerHint from "../../hooks/useShimmerHint";
 import ShimmerHint from "../../components/ShimmerHint";
 import useTheme from "../../hooks/useTheme";
 import OnboardingContainer from "../../components/OnboardingContainer";
@@ -77,49 +78,19 @@ export default function PeriodTimesScreen({ navigation, route }) {
     field: null,
   });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const shimmerAnim = useRef(new Animated.Value(-100)).current;
-  const shimmerFadeAnim = useRef(new Animated.Value(1)).current;
-  const [showShimmer, setShowShimmer] = useState(true);
+  const buttonFadeAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    if (index !== 0 || !showShimmer) return;
+  const {
+    shimmerAnim: shimmerAnim1,
+    shimmerFadeAnim: shimmerFadeAnim1,
+    showShimmer: showShimmer1,
+  } = useShimmerHint({ trigger: index === 0, cycles: 5 });
 
-    let loopCount = 0;
-    const shimmerLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: width,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: -100,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    shimmerLoop.start();
-
-    const interval = setInterval(() => {
-      loopCount++;
-      if (loopCount >= 5) {
-        shimmerLoop.stop();
-        Animated.timing(shimmerFadeAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }).start(() => setShowShimmer(false));
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => {
-      shimmerLoop.stop();
-      clearInterval(interval);
-    };
-  }, [index, showShimmer]);
+  const {
+    shimmerAnim: shimmerAnim2,
+    shimmerFadeAnim: shimmerFadeAnim2,
+    showShimmer: showShimmer2,
+  } = useShimmerHint({ trigger: index > 0 });
 
   const handleTimeChange = (_, selectedTime) => {
     if (!selectedTime) {
@@ -149,6 +120,16 @@ export default function PeriodTimesScreen({ navigation, route }) {
         setIndex(newIndex);
         setAnimating(false);
         Haptics.selectionAsync();
+
+        if (newIndex === periods.length - 1) {
+          Animated.timing(buttonFadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+        } else {
+          buttonFadeAnim.setValue(0);
+        }
       });
     });
   };
@@ -204,7 +185,9 @@ export default function PeriodTimesScreen({ navigation, route }) {
       <OnboardingContainer>
         <StepBadge step={2} totalSteps={4} colors={colors} />
 
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
           <PanGestureHandler
             onGestureEvent={onGestureEvent}
             onHandlerStateChange={onHandlerStateChange}
@@ -226,33 +209,46 @@ export default function PeriodTimesScreen({ navigation, route }) {
                   setPeriods(updated);
                 }}
                 onTimePress={(type) => {
-                  setPickerState({ isVisible: true, field: { idx: index, type } });
+                  setPickerState({
+                    isVisible: true,
+                    field: { idx: index, type },
+                  });
                 }}
                 width={width}
               />
             </Animated.View>
           </PanGestureHandler>
 
-          {index === 0 && showShimmer && (
-            <View style={{ marginTop: 20, height: 24 }}>
+          <View style={{ marginTop: 20, height: 24 }}>
+            {index === 0 && showShimmer1 && (
               <ShimmerHint
                 text="Swipe to continue →"
-                shimmerAnim={shimmerAnim}
-                shimmerFadeAnim={shimmerFadeAnim}
+                shimmerAnim={shimmerAnim1}
+                shimmerFadeAnim={shimmerFadeAnim1}
                 colors={colors}
               />
-            </View>
-          )}
-
-          {index === periods.length - 1 && (
-            <View style={{ marginTop: 36, width: "100%" }}>
-              <AppButton
-                title="Next"
-                onPress={() => setShowConfirmModal(true)}
-                disabled={!allFilled}
+            )}
+            {index > 0 && showShimmer2 && (
+              <ShimmerHint
+                text="← Scroll Back, Or Forward For More →"
+                shimmerAnim={shimmerAnim2}
+                shimmerFadeAnim={shimmerFadeAnim2}
+                colors={colors}
               />
-            </View>
-          )}
+            )}
+          </View>
+
+          <View style={{ marginTop: 36, width: "100%", height: 64 }}>
+            <Animated.View style={{ opacity: buttonFadeAnim }}>
+              {index === periods.length - 1 && (
+                <AppButton
+                  title="Next"
+                  onPress={() => setShowConfirmModal(true)}
+                  disabled={!allFilled}
+                />
+              )}
+            </Animated.View>
+          </View>
         </View>
 
         {pickerState.isVisible && (
@@ -286,7 +282,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
 function parseTime(timeString) {
   try {
     const [time, ampm] = timeString.split(" ");
-    let [hours, minutes] = time.split(":" ).map(Number);
+    let [hours, minutes] = time.split(":").map(Number);
     if (ampm === "PM" && hours < 12) hours += 12;
     if (ampm === "AM" && hours === 12) hours = 0;
     const now = new Date();

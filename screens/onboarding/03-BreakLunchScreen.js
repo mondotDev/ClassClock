@@ -16,11 +16,12 @@ import DatePicker from "react-native-date-picker";
 import { useNavigation } from "@react-navigation/native";
 import Toast from "react-native-toast-message";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import StepBadge from "../../components/StepBadge";
 import ContinueModal from "../../components/ContinueModal";
 import * as Haptics from "expo-haptics";
 import OnboardingContainer from "../../components/OnboardingContainer";
+import useShimmerHint from "../../hooks/useShimmerHint";
+import ShimmerHint from "../../components/ShimmerHint";
 
 export default function BreakLunchScreen({ navigation, route }) {
   const {
@@ -49,9 +50,10 @@ export default function BreakLunchScreen({ navigation, route }) {
     field: null,
   });
 
-  const shimmerAnim = useRef(new Animated.Value(-100)).current;
-  const shimmerFadeAnim = useRef(new Animated.Value(1)).current;
-  const [showShimmer, setShowShimmer] = useState(true);
+  const { shimmerAnim, shimmerFadeAnim, showShimmer } = useShimmerHint({
+    trigger: true,
+    cycles: 3,
+  });
 
   const stepFade = useRef(new Animated.Value(0)).current;
   const breakFade = useRef(new Animated.Value(0)).current;
@@ -99,46 +101,6 @@ export default function BreakLunchScreen({ navigation, route }) {
       useNativeDriver: true,
     }).start();
   }, []);
-
-  useEffect(() => {
-    if (!showShimmer) return;
-
-    let loopCount = 0;
-    const shimmerLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmerAnim, {
-          toValue: 300,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmerAnim, {
-          toValue: -100,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    shimmerLoop.start();
-
-    const interval = setInterval(() => {
-      loopCount++;
-      if (loopCount >= 3) {
-        shimmerLoop.stop();
-        Animated.timing(shimmerFadeAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }).start(() => setShowShimmer(false));
-        clearInterval(interval);
-      }
-    }, 1000);
-
-    return () => {
-      shimmerLoop.stop();
-      clearInterval(interval);
-    };
-  }, [showShimmer]);
 
   const openTimePicker = (field) => {
     setPickerState({ isVisible: true, mode: "time", field });
@@ -272,39 +234,16 @@ export default function BreakLunchScreen({ navigation, route }) {
         )}
       </Animated.View>
 
-      <View style={{ alignItems: "center", marginTop: 8, height: 24 }}>
-        {showShimmer && (
-          <View style={{ position: "relative", overflow: "hidden" }}>
-            <Animated.Text
-              style={{
-                fontSize: 15,
-                fontWeight: "600",
-                color: colors.border,
-                opacity: shimmerFadeAnim,
-              }}
-            >
-              Optional – skip if not needed →
-            </Animated.Text>
-            <Animated.View
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: "100%",
-                transform: [{ translateX: shimmerAnim }],
-              }}
-            >
-              <LinearGradient
-                colors={["transparent", "rgba(255,255,255,0.4)", "transparent"]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={{ width: 100, height: "100%" }}
-              />
-            </Animated.View>
-          </View>
-        )}
-      </View>
+      {showShimmer && (
+        <View style={{ alignItems: "center", marginTop: 8, height: 24 }}>
+          <ShimmerHint
+            text="Optional – skip if not needed →"
+            shimmerAnim={shimmerAnim}
+            shimmerFadeAnim={shimmerFadeAnim}
+            colors={colors}
+          />
+        </View>
+      )}
 
       <Animated.View style={{ opacity: nextFade, width: "100%" }}>
         <AppButton title="Next" onPress={handleNext} style={{ marginTop: 36 }} />

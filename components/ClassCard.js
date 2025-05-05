@@ -83,7 +83,7 @@ export default function ClassCard({
 const styles = StyleSheet.create({
   card: {
     marginTop: 72,
-    height: 260,
+    height: 460,
     justifyContent: 'center',
     padding: 20,
     borderRadius: 20,
