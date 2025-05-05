@@ -1,6 +1,6 @@
 // App.js
 import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 
@@ -43,7 +43,7 @@ export default function App() {
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+    <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <AppProvider>
         <>
           {showLoader ? (
@@ -56,6 +56,6 @@ export default function App() {
           )}
         </>
       </AppProvider>
-    </View>
+    </GestureHandlerRootView>
   );
 }

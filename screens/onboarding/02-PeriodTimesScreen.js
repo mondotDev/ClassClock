@@ -1,24 +1,30 @@
-import React, { useRef, useState, useEffect, useCallback } from "react";
+// screens/onboarding/PeriodTimesScreen.js
+
+import React, { useState, useRef, useEffect } from "react";
 import {
+  View,
+  StyleSheet,
   Animated,
-  useWindowDimensions,
+  Dimensions,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import { PanGestureHandler, State } from "react-native-gesture-handler";
 import DatePicker from "react-native-date-picker";
 import { format } from "date-fns";
+import * as Haptics from "expo-haptics";
 
-// Components
-import AppButton from "../../components/AppButton";
 import ClassCard from "../../components/ClassCard";
-import ShimmerHint from "../../components/ShimmerHint";
-import StepBadge from "../../components/StepBadge";
-import PeriodProgress from "../../components/PeriodProgress";
+import AppButton from "../../components/AppButton";
 import ContinueModal from "../../components/ContinueModal";
+import StepBadge from "../../components/StepBadge";
+import ShimmerHint from "../../components/ShimmerHint";
+import useTheme from "../../hooks/useTheme";
 import OnboardingContainer from "../../components/OnboardingContainer";
 
-// Hooks
-import useTheme from "../../hooks/useTheme";
+const { width } = Dimensions.get("window");
+const SWIPE_THRESHOLD = width * 0.25;
 
 export default function PeriodTimesScreen({ navigation, route }) {
   const {
@@ -31,8 +37,6 @@ export default function PeriodTimesScreen({ navigation, route }) {
   } = route.params;
 
   const { colors } = useTheme();
-  const { width } = useWindowDimensions();
-  const ITEM_WIDTH = width * 0.92;
   const total = numPeriods + (hasZeroPeriod ? 1 : 0);
 
   const generateDefaultPeriods = () => {
@@ -52,7 +56,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
     });
   };
 
-  const [periods, setPeriods] = useState(() =>
+  const [periods, setPeriods] = useState(
     edit && existingSchedule?.periods?.length
       ? existingSchedule.periods.map((p, i) => ({
           label:
@@ -64,63 +68,21 @@ export default function PeriodTimesScreen({ navigation, route }) {
       : generateDefaultPeriods()
   );
 
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [index, setIndex] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const pan = useRef(new Animated.ValueXY()).current;
   const [pickerState, setPickerState] = useState({
     isVisible: false,
     mode: "time",
     field: null,
   });
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const nextButtonOpacity = useRef(new Animated.Value(0)).current;
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const shimmerAnim = useRef(new Animated.Value(-100)).current;
   const shimmerFadeAnim = useRef(new Animated.Value(1)).current;
-  const stepFadeAnim = useRef(new Animated.Value(0)).current;
-  const stepTranslateAnim = useRef(new Animated.Value(-10)).current;
-  const boxPulse = useRef(new Animated.Value(1)).current;
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showShimmer, setShowShimmer] = useState(true);
 
-  const cardEntranceAnim = useRef(
-    periods.map(() => new Animated.Value(0))
-  ).current;
-
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.timing(stepFadeAnim, {
-        toValue: 1,
-        duration: 400,
-        delay: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(stepTranslateAnim, {
-        toValue: 0,
-        duration: 400,
-        delay: 100,
-        useNativeDriver: true,
-      }),
-      Animated.stagger(
-        100,
-        cardEntranceAnim.map((anim) =>
-          Animated.timing(anim, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          })
-        )
-      ),
-    ]).start();
-  }, []);
-
-  useEffect(() => {
-    if (currentIndex !== 0 || !showShimmer) return;
+    if (index !== 0 || !showShimmer) return;
 
     let loopCount = 0;
     const shimmerLoop = Animated.loop(
@@ -142,11 +104,11 @@ export default function PeriodTimesScreen({ navigation, route }) {
 
     const interval = setInterval(() => {
       loopCount++;
-      if (loopCount >= 3) {
+      if (loopCount >= 5) {
         shimmerLoop.stop();
         Animated.timing(shimmerFadeAnim, {
           toValue: 0,
-          duration: 500,
+          duration: 800,
           useNativeDriver: true,
         }).start(() => setShowShimmer(false));
         clearInterval(interval);
@@ -157,42 +119,64 @@ export default function PeriodTimesScreen({ navigation, route }) {
       shimmerLoop.stop();
       clearInterval(interval);
     };
-  }, [currentIndex, showShimmer]);
+  }, [index, showShimmer]);
 
-  useEffect(() => {
-    Animated.timing(nextButtonOpacity, {
-      toValue: currentIndex === periods.length - 1 ? 1 : 0,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [currentIndex]);
-
-  const openTimePicker = (idx, type) => {
-    setPickerState({ isVisible: true, mode: "time", field: { idx, type } });
-  };
-
-  const handleTimeChange = (event, selectedTime) => {
-    if (event.type === "dismissed" || !selectedTime) {
-      return setPickerState({ isVisible: false, mode: "time", field: null });
+  const handleTimeChange = (_, selectedTime) => {
+    if (!selectedTime) {
+      return setPickerState({ isVisible: false, field: null });
     }
-    const { idx, type } = pickerState.field;
+
     const updated = [...periods];
-    updated[idx][type === "start" ? "startTime" : "endTime"] = selectedTime;
+    const { idx, type } = pickerState.field;
+    updated[idx][type] = selectedTime;
     setPeriods(updated);
-    setPickerState({ isVisible: false, mode: "time", field: null });
+    setPickerState({ isVisible: false, field: null });
   };
 
-  const handleLabelChange = (idx, text) => {
-    const updated = [...periods];
-    updated[idx].label = text;
-    setPeriods(updated);
+  const animateToIndex = (newIndex) => {
+    if (newIndex < 0 || newIndex >= periods.length || animating) return;
+    setAnimating(true);
+
+    const direction = newIndex > index ? -1 : 1;
+
+    Animated.timing(pan, {
+      toValue: { x: direction * width, y: 0 },
+      duration: 280,
+      useNativeDriver: true,
+    }).start(() => {
+      requestAnimationFrame(() => {
+        pan.setValue({ x: 0, y: 0 });
+        setIndex(newIndex);
+        setAnimating(false);
+        Haptics.selectionAsync();
+      });
+    });
+  };
+
+  const onGestureEvent = Animated.event(
+    [{ nativeEvent: { translationX: pan.x } }],
+    { useNativeDriver: true }
+  );
+
+  const onHandlerStateChange = (event) => {
+    const { state, translationX } = event.nativeEvent;
+    if (state === State.END) {
+      if (translationX < -SWIPE_THRESHOLD && index < periods.length - 1) {
+        animateToIndex(index + 1);
+      } else if (translationX > SWIPE_THRESHOLD && index > 0) {
+        animateToIndex(index - 1);
+      } else {
+        Animated.spring(pan, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: true,
+        }).start();
+      }
+    }
   };
 
   const allFilled = periods.every(
     (p) => p.label.trim() && p.startTime && p.endTime
   );
-
-  const handleNext = () => setShowConfirmModal(true);
 
   const proceedToBreakLunch = () => {
     const finalPeriods = periods.map((p) => ({
@@ -215,124 +199,87 @@ export default function PeriodTimesScreen({ navigation, route }) {
     });
   };
 
-  const handleMomentumScrollEnd = (e) => {
-    const index = Math.round(e.nativeEvent.contentOffset.x / ITEM_WIDTH);
-    if (index !== currentIndex) {
-      Haptics.selectionAsync();
-      setCurrentIndex(index);
-    }
-  };
-
-  const renderItem = useCallback(
-    ({ item, index }) => {
-      const inputRange = [
-        (index - 1) * ITEM_WIDTH,
-        index * ITEM_WIDTH,
-        (index + 1) * ITEM_WIDTH,
-      ];
-      const tilt = scrollX.interpolate({
-        inputRange,
-        outputRange: ["5deg", "0deg", "-5deg"],
-        extrapolate: "clamp",
-      });
-
-      return (
-        <ClassCard
-          label={item.label}
-          startTime={item.startTime}
-          endTime={item.endTime}
-          onLabelChange={(text) => handleLabelChange(index, text)}
-          onTimePress={(type) => openTimePicker(index, type)}
-          tiltAnim={tilt}
-          entranceAnim={cardEntranceAnim[index]}
-          boxPulse={boxPulse}
-          width={width}
-        />
-      );
-    },
-    [colors, boxPulse, cardEntranceAnim]
-  );
-
-  const progress = Animated.divide(scrollX, ITEM_WIDTH);
-
   return (
-    <OnboardingContainer style={{ gap: 24 }}>
-      <StepBadge
-        step={2}
-        totalSteps={4}
-        colors={colors}
-        fadeAnim={stepFadeAnim}
-        translateAnim={stepTranslateAnim}
-      />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <OnboardingContainer>
+        <StepBadge step={2} totalSteps={4} colors={colors} />
 
-      <Animated.FlatList
-        data={periods}
-        keyExtractor={(_, i) => i.toString()}
-        renderItem={renderItem}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        decelerationRate="fast"
-        snapToInterval={ITEM_WIDTH}
-        disableIntervalMomentum
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: false }
-        )}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        contentContainerStyle={{
-          paddingHorizontal: (width - ITEM_WIDTH) / 2,
-        }}
-      />
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <PanGestureHandler
+            onGestureEvent={onGestureEvent}
+            onHandlerStateChange={onHandlerStateChange}
+          >
+            <Animated.View
+              key={index}
+              style={{
+                width: width * 0.92,
+                transform: [{ translateX: pan.x }],
+              }}
+            >
+              <ClassCard
+                label={periods[index]?.label}
+                startTime={periods[index]?.startTime}
+                endTime={periods[index]?.endTime}
+                onLabelChange={(text) => {
+                  const updated = [...periods];
+                  updated[index].label = text;
+                  setPeriods(updated);
+                }}
+                onTimePress={(type) => {
+                  setPickerState({ isVisible: true, field: { idx: index, type } });
+                }}
+                width={width}
+              />
+            </Animated.View>
+          </PanGestureHandler>
 
-      <Animated.View style={{ alignItems: "center", gap: 12, marginTop: 24, opacity: fadeAnim }}>
-        {currentIndex === 0 && showShimmer && (
-          <ShimmerHint
-            text="Swipe right to enter next class →"
-            shimmerAnim={shimmerAnim}
-            shimmerFadeAnim={shimmerFadeAnim}
-            colors={colors}
+          {index === 0 && showShimmer && (
+            <View style={{ marginTop: 20, height: 24 }}>
+              <ShimmerHint
+                text="Swipe to continue →"
+                shimmerAnim={shimmerAnim}
+                shimmerFadeAnim={shimmerFadeAnim}
+                colors={colors}
+              />
+            </View>
+          )}
+
+          {index === periods.length - 1 && (
+            <View style={{ marginTop: 36, width: "100%" }}>
+              <AppButton
+                title="Next"
+                onPress={() => setShowConfirmModal(true)}
+                disabled={!allFilled}
+              />
+            </View>
+          )}
+        </View>
+
+        {pickerState.isVisible && (
+          <DatePicker
+            value={
+              pickerState.field?.type === "start"
+                ? periods[index]?.startTime
+                : periods[index]?.endTime
+            }
+            mode="time"
+            is24Hour={false}
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={handleTimeChange}
           />
         )}
 
-        <PeriodProgress
-          currentIndex={currentIndex}
-          total={periods.length}
-          progressAnim={progress}
+        <ContinueModal
+          visible={showConfirmModal}
+          onCancel={() => setShowConfirmModal(false)}
+          onContinue={proceedToBreakLunch}
+          title="Continue to Break & Lunch?"
+          message="You can always go back and edit period times later."
           colors={colors}
-          pulseAnim={pulseAnim}
-          labelSingular="Class"
+          disabled={!allFilled}
         />
-      </Animated.View>
-
-      <Animated.View style={{ width: "100%", opacity: nextButtonOpacity }}>
-        <AppButton title="Next" onPress={handleNext} disabled={!allFilled} />
-      </Animated.View>
-
-      {pickerState.isVisible && (
-        <DatePicker
-          value={
-            pickerState.field?.type === "start"
-              ? periods[pickerState.field.idx].startTime
-              : periods[pickerState.field.idx].endTime
-          }
-          mode="time"
-          is24Hour={false}
-          display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={handleTimeChange}
-        />
-      )}
-
-      <ContinueModal
-        visible={showConfirmModal}
-        onCancel={() => setShowConfirmModal(false)}
-        onContinue={proceedToBreakLunch}
-        title="Continue to Break & Lunch?"
-        message="You can always go back and edit period times later."
-        colors={colors}
-        disabled={!allFilled}
-      />
-    </OnboardingContainer>
+      </OnboardingContainer>
+    </TouchableWithoutFeedback>
   );
 }
 
