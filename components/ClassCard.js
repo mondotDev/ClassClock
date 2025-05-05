@@ -1,15 +1,14 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
   TextInput,
-  Pressable,
   StyleSheet,
   Animated,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { format } from 'date-fns';
-import useTheme from '../hooks/useTheme';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import useTheme from "../hooks/useTheme";
+import TimePicker from "./TimePicker";
 
 export default function ClassCard({
   label,
@@ -33,7 +32,7 @@ export default function ClassCard({
           width: ITEM_WIDTH,
           backgroundColor: colors.card,
           transform: [
-            { rotateY: tiltAnim || '0deg' },
+            { rotateY: tiltAnim || "0deg" },
             {
               translateY: entranceAnim
                 ? entranceAnim.interpolate({
@@ -47,34 +46,42 @@ export default function ClassCard({
         },
       ]}
     >
-      <Text style={[styles.inputLabel, { color: colors.text }]}>Enter your class name</Text>
-      <Animated.View style={[styles.inputWrapper, { transform: [{ scale: boxPulse || 1 }] }]}>
+      <Text style={[styles.inputLabel, { color: colors.text }]}>
+        Enter your class name
+      </Text>
+
+      <Animated.View
+        style={[styles.inputWrapper, { transform: [{ scale: boxPulse || 1 }] }]}
+      >
         <TextInput
           value={label}
           onChangeText={onLabelChange}
           placeholder="Class Name"
-          style={[styles.input, { borderColor: colors.border, color: colors.text }]}
+          style={[
+            styles.input,
+            { borderColor: colors.border, color: colors.text },
+          ]}
           placeholderTextColor={colors.border}
         />
-        <Ionicons name="pencil" size={20} color={colors.border} style={styles.inlineIcon} />
+        <Ionicons
+          name="pencil"
+          size={20}
+          color={colors.border}
+          style={styles.inlineIcon}
+        />
       </Animated.View>
+
       <View style={styles.timeRow}>
-        <Pressable
-          style={[styles.timeButton, { backgroundColor: colors.primary }]}
-          onPress={() => onTimePress('start')}
-        >
-          <Text style={[styles.timeButtonText, { color: colors.background }]}>
-            Start: {format(startTime, 'h:mm a')}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.timeButton, { backgroundColor: colors.primary }]}
-          onPress={() => onTimePress('end')}
-        >
-          <Text style={[styles.timeButtonText, { color: colors.background }]}>
-            End: {format(endTime, 'h:mm a')}
-          </Text>
-        </Pressable>
+        <TimePicker
+          label="Start"
+          value={startTime}
+          onChange={(newTime) => onTimePress("start", newTime)}
+        />
+        <TimePicker
+          label="End"
+          value={endTime}
+          onChange={(newTime) => onTimePress("end", newTime)}
+        />
       </View>
     </Animated.View>
   );
@@ -84,11 +91,11 @@ const styles = StyleSheet.create({
   card: {
     marginTop: 72,
     height: 460,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 20,
     borderRadius: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -96,48 +103,37 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 16,
-    fontWeight: '500',
-    textAlign: 'center',
+    fontWeight: "500",
+    textAlign: "center",
     marginBottom: 8,
   },
   inputWrapper: {
-    width: '100%',
-    position: 'relative',
-    alignItems: 'center',
+    width: "100%",
+    position: "relative",
+    alignItems: "center",
     marginBottom: 20,
   },
   input: {
-    width: '100%',
+    width: "100%",
     borderWidth: 1,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 16,
     fontSize: 18,
-    textAlign: 'center',
-    textTransform: 'uppercase',
+    textAlign: "center",
+    textTransform: "uppercase",
     letterSpacing: 1.2,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   inlineIcon: {
-    position: 'absolute',
+    position: "absolute",
     right: 20,
     top: 12,
   },
   timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
     gap: 12,
-  },
-  timeButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timeButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

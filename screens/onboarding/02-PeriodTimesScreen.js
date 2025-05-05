@@ -11,7 +11,6 @@ import {
   Keyboard,
 } from "react-native";
 import { PanGestureHandler, State } from "react-native-gesture-handler";
-import DatePicker from "react-native-date-picker";
 import { format } from "date-fns";
 import * as Haptics from "expo-haptics";
 
@@ -23,6 +22,7 @@ import useShimmerHint from "../../hooks/useShimmerHint";
 import ShimmerHint from "../../components/ShimmerHint";
 import useTheme from "../../hooks/useTheme";
 import OnboardingContainer from "../../components/OnboardingContainer";
+import { parseTime, generateDefaultPeriods } from "../../utils/scheduleUtils";
 
 const { width } = Dimensions.get("window");
 const SWIPE_THRESHOLD = width * 0.25;
@@ -40,23 +40,6 @@ export default function PeriodTimesScreen({ navigation, route }) {
   const { colors } = useTheme();
   const total = numPeriods + (hasZeroPeriod ? 1 : 0);
 
-  const generateDefaultPeriods = () => {
-    const base = new Date();
-    base.setHours(8, 30, 0, 0);
-    return Array.from({ length: total }, (_, i) => {
-      const start = new Date(base.getTime() + i * 50 * 60000);
-      const end = new Date(start.getTime() + 50 * 60000);
-      return {
-        label:
-          hasZeroPeriod && i === 0
-            ? "Zero Period"
-            : `Period ${hasZeroPeriod ? i : i + 1}`,
-        startTime: start,
-        endTime: end,
-      };
-    });
-  };
-
   const [periods, setPeriods] = useState(
     edit && existingSchedule?.periods?.length
       ? existingSchedule.periods.map((p, i) => ({
@@ -66,43 +49,26 @@ export default function PeriodTimesScreen({ navigation, route }) {
           startTime: parseTime(p.startTime),
           endTime: parseTime(p.endTime),
         }))
-      : generateDefaultPeriods()
+      : generateDefaultPeriods(total, hasZeroPeriod)
   );
 
   const [index, setIndex] = useState(0);
   const [animating, setAnimating] = useState(false);
   const pan = useRef(new Animated.ValueXY()).current;
-  const [pickerState, setPickerState] = useState({
-    isVisible: false,
-    mode: "time",
-    field: null,
-  });
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const buttonFadeAnim = useRef(new Animated.Value(0)).current;
+  const buttonFadeAnim = useRef(new Animated.Value(periods.length === 1 ? 1 : 0)).current;
 
   const {
     shimmerAnim: shimmerAnim1,
     shimmerFadeAnim: shimmerFadeAnim1,
     showShimmer: showShimmer1,
-  } = useShimmerHint({ trigger: index === 0, cycles: 5 });
+  } = useShimmerHint({ trigger: index === 0 && periods.length > 1, cycles: 5 });
 
   const {
     shimmerAnim: shimmerAnim2,
     shimmerFadeAnim: shimmerFadeAnim2,
     showShimmer: showShimmer2,
   } = useShimmerHint({ trigger: index > 0 });
-
-  const handleTimeChange = (_, selectedTime) => {
-    if (!selectedTime) {
-      return setPickerState({ isVisible: false, field: null });
-    }
-
-    const updated = [...periods];
-    const { idx, type } = pickerState.field;
-    updated[idx][type] = selectedTime;
-    setPeriods(updated);
-    setPickerState({ isVisible: false, field: null });
-  };
 
   const animateToIndex = (newIndex) => {
     if (newIndex < 0 || newIndex >= periods.length || animating) return;
@@ -185,9 +151,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
       <OnboardingContainer>
         <StepBadge step={2} totalSteps={4} colors={colors} />
 
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
           <PanGestureHandler
             onGestureEvent={onGestureEvent}
             onHandlerStateChange={onHandlerStateChange}
@@ -208,11 +172,10 @@ export default function PeriodTimesScreen({ navigation, route }) {
                   updated[index].label = text;
                   setPeriods(updated);
                 }}
-                onTimePress={(type) => {
-                  setPickerState({
-                    isVisible: true,
-                    field: { idx: index, type },
-                  });
+                onTimePress={(type, newTime) => {
+                  const updated = [...periods];
+                  updated[index][type + "Time"] = newTime;
+                  setPeriods(updated);
                 }}
                 width={width}
               />
@@ -240,7 +203,7 @@ export default function PeriodTimesScreen({ navigation, route }) {
 
           <View style={{ marginTop: 36, width: "100%", height: 64 }}>
             <Animated.View style={{ opacity: buttonFadeAnim }}>
-              {index === periods.length - 1 && (
+              {(periods.length === 1 || index === periods.length - 1) && (
                 <AppButton
                   title="Next"
                   onPress={() => setShowConfirmModal(true)}
@@ -250,20 +213,6 @@ export default function PeriodTimesScreen({ navigation, route }) {
             </Animated.View>
           </View>
         </View>
-
-        {pickerState.isVisible && (
-          <DatePicker
-            value={
-              pickerState.field?.type === "start"
-                ? periods[index]?.startTime
-                : periods[index]?.endTime
-            }
-            mode="time"
-            is24Hour={false}
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={handleTimeChange}
-          />
-        )}
 
         <ContinueModal
           visible={showConfirmModal}
@@ -277,18 +226,4 @@ export default function PeriodTimesScreen({ navigation, route }) {
       </OnboardingContainer>
     </TouchableWithoutFeedback>
   );
-}
-
-function parseTime(timeString) {
-  try {
-    const [time, ampm] = timeString.split(" ");
-    let [hours, minutes] = time.split(":").map(Number);
-    if (ampm === "PM" && hours < 12) hours += 12;
-    if (ampm === "AM" && hours === 12) hours = 0;
-    const now = new Date();
-    now.setHours(hours, minutes, 0, 0);
-    return now;
-  } catch {
-    return new Date();
-  }
 }

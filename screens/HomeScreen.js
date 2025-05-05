@@ -15,7 +15,6 @@ import useTheme from '../hooks/useTheme';
 import { useSettings, useSchedules } from '../context/AppContext';
 import { format } from 'date-fns';
 import FuseProgressBar from '../components/FuseProgressBar';
-// import { fetchWeather, getIconNameForWeather } from '../utils/weather';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -24,13 +23,13 @@ export default function HomeScreen() {
   const { schedules, schedulesLoaded, hasOnboarded } = useSchedules();
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeSchedule, setActiveSchedule] = useState(null);
   const [currentBlock, setCurrentBlock] = useState('Loading...');
   const [minutesLeft, setMinutesLeft] = useState(null);
-
-  // const [weather, setWeather] = useState(null);
-  // const [weatherIcon, setWeatherIcon] = useState('cloud');
+  const [secondsLeft, setSecondsLeft] = useState(null);
 
   useEffect(() => {
     if (schedulesLoaded && schedules.length === 0 && !hasOnboarded) {
@@ -44,24 +43,8 @@ export default function HomeScreen() {
   useEffect(() => {
     if (schedulesLoaded) {
       updateTime();
-      const now = new Date();
-      const msUntilNextMinute = (60 - now.getSeconds()) * 1000;
-
-      const timeout = setTimeout(() => {
-        updateTime();
-        const interval = setInterval(updateTime, 60000);
-        setUpdater(interval);
-      }, msUntilNextMinute);
-
-      let updater;
-      function setUpdater(interval) {
-        updater = interval;
-      }
-
-      return () => {
-        clearTimeout(timeout);
-        clearInterval(updater);
-      };
+      const interval = setInterval(updateTime, 1000);
+      return () => clearInterval(interval);
     }
   }, [schedulesLoaded]);
 
@@ -70,19 +53,6 @@ export default function HomeScreen() {
     setCurrentTime(now);
     findActiveSchedule(now);
   };
-
-  // useEffect(() => {
-  //   fetchWeather()
-  //     .then((data) => {
-  //       setWeather(data);
-  //       setWeatherIcon(getIconNameForWeather(data));
-  //     })
-  //     .catch((err) => {
-  //       console.warn('🌦️ Failed to fetch weather:', err.message);
-  //       setWeather(null);
-  //       setWeatherIcon('cloud');
-  //     });
-  // }, [currentTime]);
 
   const findActiveSchedule = (now) => {
     const today = format(now, 'EEE');
@@ -97,6 +67,7 @@ export default function HomeScreen() {
       setActiveSchedule(null);
       setCurrentBlock('No Schedule Listed');
       setMinutesLeft(null);
+      setSecondsLeft(null);
     }
   };
 
@@ -135,7 +106,9 @@ export default function HomeScreen() {
       const block = allBlocks[i];
       if (now >= block.start && now < block.end) {
         setCurrentBlock(block.label);
-        setMinutesLeft(Math.floor((block.end - now) / (1000 * 60)));
+        const seconds = Math.floor((block.end - now) / 1000);
+        setMinutesLeft(Math.floor(seconds / 60));
+        setSecondsLeft(seconds % 60);
         found = true;
         break;
       }
@@ -143,7 +116,9 @@ export default function HomeScreen() {
         const nextBlock = allBlocks[i + 1];
         if (now >= block.end && now < nextBlock.start) {
           setCurrentBlock('Passing Time');
-          setMinutesLeft(Math.floor((nextBlock.start - now) / (1000 * 60)));
+          const seconds = Math.floor((nextBlock.start - now) / 1000);
+          setMinutesLeft(Math.floor(seconds / 60));
+          setSecondsLeft(seconds % 60);
           found = true;
           break;
         }
@@ -153,13 +128,39 @@ export default function HomeScreen() {
     if (!found) {
       if (now < allBlocks[0].start) {
         setCurrentBlock('Before School');
-        setMinutesLeft(Math.floor((allBlocks[0].start - now) / (1000 * 60)));
+        const seconds = Math.floor((allBlocks[0].start - now) / 1000);
+        setMinutesLeft(Math.floor(seconds / 60));
+        setSecondsLeft(seconds % 60);
       } else if (now > allBlocks[allBlocks.length - 1].end) {
         setCurrentBlock('School Closed');
         setMinutesLeft(null);
+        setSecondsLeft(null);
       }
     }
   };
+
+  useEffect(() => {
+    if (secondsLeft !== null && secondsLeft < 60) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [secondsLeft]);
 
   const parseTime = (timeStr, referenceDate) => {
     const [time, ampm] = timeStr.split(' ');
@@ -220,7 +221,8 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <View style={{ padding: 24 }}>
-        <Animated.View style={[styles.cogButton, { transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View style={[styles.cogButton, { transform: [{ scale: scaleAnim }] }]}
+        >
           <Pressable
             onPress={() => navigation.navigate('Settings')}
             onPressIn={handlePressIn}
@@ -231,16 +233,7 @@ export default function HomeScreen() {
           </Pressable>
         </Animated.View>
 
-        {/* Greeting + Weather + Time */}
         <View style={{ marginTop: 64 }}>
-          {/* {weatherIcon && (
-            <Feather
-              name={weatherIcon}
-              size={92}
-              color={theme.colors.text + '33'} 
-              style={{ marginBottom: 16 }}
-            />
-          )} */}
           <Text style={[styles.greeting, { color: theme.colors.text }]}>{getGreeting()}</Text>
           <Text style={[styles.timeText, { color: theme.colors.text }]}>{formattedTime}</Text>
           <Text style={[styles.dateText, { color: theme.colors.text }]}>{formattedDate}</Text>
@@ -249,9 +242,11 @@ export default function HomeScreen() {
         <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
           <Text style={[styles.periodText, { color: theme.colors.text }]}>{currentBlock}</Text>
           {minutesLeft !== null && (
-            <Text style={[styles.countdownText, { color: theme.colors.text }]}>
-              {minutesLeft} min left
-            </Text>
+            <Animated.Text
+              style={[styles.countdownText, { color: theme.colors.text, transform: [{ scale: pulseAnim }] }]}
+            >
+              {secondsLeft < 60 ? `${secondsLeft} sec left` : `${minutesLeft} min left`}
+            </Animated.Text>
           )}
           {activeSchedule &&
             currentBlock !== 'Before School' &&

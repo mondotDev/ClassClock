@@ -1,60 +1,52 @@
-import React from 'react';
-import { View, Text, Animated, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+// components/ShimmerHint.js
+
+import React from "react";
+import { Animated, Text, StyleSheet, View } from "react-native";
 
 export default function ShimmerHint({
-  text = 'Swipe to continue →',
+  text = "Swipe to continue →",
   shimmerAnim,
   shimmerFadeAnim,
   colors,
+  containerStyle = {},
 }) {
+  const shimmerTranslate = shimmerAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-20, 20],
+  });
+
   return (
-    <View style={styles.container}>
-      <View style={styles.inner}>
-        <Animated.Text style={[styles.text, { color: colors.border, opacity: shimmerFadeAnim }]}>
-          {text}
-        </Animated.Text>
-        <Animated.View
+    <Animated.View
+      style={[
+        styles.shimmerWrapper,
+        containerStyle,
+        { opacity: shimmerFadeAnim },
+      ]}
+    >
+      <View style={{ overflow: "hidden" }}>
+        <Animated.Text
           style={[
-            styles.shimmerOverlay,
+            styles.shimmerText,
             {
-              transform: [{ translateX: shimmerAnim }],
+              color: colors.primary,
+              transform: [{ translateX: shimmerTranslate }],
             },
           ]}
         >
-          <LinearGradient
-            colors={['transparent', 'rgba(255,255,255,0.5)', 'transparent']}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.gradient}
-          />
-        </Animated.View>
+          {text}
+        </Animated.Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
+  shimmerWrapper: {
+    marginTop: 20,
+    alignItems: "center",
   },
-  inner: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  text: {
+  shimmerText: {
     fontSize: 16,
-    fontWeight: '600',
-  },
-  shimmerOverlay: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '100%',
-  },
-  gradient: {
-    width: 100,
-    height: '100%',
+    fontWeight: "600",
   },
 });
