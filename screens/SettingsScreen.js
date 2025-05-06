@@ -1,5 +1,4 @@
 // screens/SettingsScreen.js
-
 import React, { useState } from "react";
 import {
   SafeAreaView,
@@ -17,6 +16,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import AppButton from "../components/AppButton";
 import useTheme from "../hooks/useTheme";
 import { useSettings, useSchedules } from "../context/AppContext";
+import { useAuth } from "../context/AuthContext";
+import useProStatus from "../hooks/useProStatus";
+import useGoogleAuth from "../hooks/useGoogleAuth";
 import { format } from "date-fns";
 import UpgradeModal from "../components/UpgradeModal";
 
@@ -26,15 +28,24 @@ export default function SettingsScreen() {
   const {
     schedules,
     deleteSchedule,
-    isPro,
-    setIsPro,
     setSchedules,
     setActiveScheduleId,
     setHasOnboarded,
   } = useSchedules();
-
-  const { isDarkMode, setIsDarkMode, is24HourTime, setIs24HourTime } = useSettings();
+  const { user, setUser, signOut } = useAuth();
+  const { isPro } = useProStatus();
+  const { isDarkMode, setIsDarkMode, is24HourTime, setIs24HourTime } =
+    useSettings();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  const { promptAsync } = useGoogleAuth(
+    (firebaseUser) => {
+      setUser({ ...firebaseUser, id: firebaseUser.localId });
+    },
+    (error) => {
+      Alert.alert("Sign-in failed", error.message);
+    }
+  );
 
   const handleEditSchedule = (schedule) => {
     navigation.navigate("ScheduleName", {
@@ -70,35 +81,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleFakeUpgrade = () => {
-    setIsPro(true);
-    setShowUpgradeModal(false);
-    Alert.alert("Success", "Pro features unlocked!");
-  };
-
-  const handleResetAll = async () => {
-    try {
-      await AsyncStorage.multiRemove([
-        "@schedules",
-        "@activeScheduleId",
-        "@hasOnboarded",
-      ]);
-
-      setSchedules([]);
-      setActiveScheduleId(null);
-      setHasOnboarded(false);
-
-      Alert.alert("Reset", "All schedules removed. Returning to onboarding.");
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "ScheduleName" }],
-      });
-    } catch (e) {
-      console.error("Reset failed:", e);
-      Alert.alert("Error", "Failed to reset schedules.");
-    }
-  };
-
   const today = format(new Date(), "EEE");
 
   return (
@@ -116,38 +98,132 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
 
-        <Text style={[styles.header, { color: theme.colors.text }]}>Settings</Text>
+        <Text style={[styles.header, { color: theme.colors.text }]}>
+          Settings
+        </Text>
+
+        {isPro && (
+          <View
+            style={[
+              styles.badge,
+              {
+                backgroundColor: theme.colors.primary,
+                alignSelf: "center",
+                marginBottom: 16,
+              },
+            ]}
+          >
+            <Text style={{ color: "white", fontWeight: "700", fontSize: 14 }}>
+              🌟 You are a Pro user
+            </Text>
+          </View>
+        )}
+
+        {!isPro && (
+          <AppButton
+            title="Sign In to Save Schedules"
+            onPress={() => setShowUpgradeModal(true)}
+            style={{ marginBottom: 16, opacity: 0.6 }}
+          />
+        )}
+
+        {user && user.email && (
+          <AppButton
+            title="Sign Out"
+            onPress={() => {
+              Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Sign Out",
+                  style: "destructive",
+                  onPress: signOut,
+                },
+              ]);
+            }}
+            style={{ marginBottom: 16 }}
+          />
+        )}
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Schedules</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Schedules
+          </Text>
 
           {schedules.length === 0 ? (
-            <Text style={[styles.emptyText, { color: theme.colors.text + "99" }]}>No schedules yet.</Text>
+            <Text
+              style={[styles.emptyText, { color: theme.colors.text + "99" }]}
+            >
+              No schedules yet.
+            </Text>
           ) : (
             schedules.map((schedule, idx) => {
-              const isActiveToday = Array.isArray(schedule.selectedDays) && schedule.selectedDays.includes(today);
-
+              const isActiveToday =
+                Array.isArray(schedule.selectedDays) &&
+                schedule.selectedDays.includes(today);
               return (
                 <View
                   key={schedule.id ?? `${schedule.scheduleName}-${idx}`}
-                  style={[styles.scheduleCard, { backgroundColor: theme.colors.card }]}
+                  style={[
+                    styles.scheduleCard,
+                    { backgroundColor: theme.colors.card },
+                  ]}
                 >
                   <View style={styles.scheduleHeader}>
-                    <Text style={[styles.scheduleName, { color: theme.colors.text }]}> {schedule.scheduleName || "⚠️ Missing scheduleName"} </Text>
+                    <Text
+                      style={[
+                        styles.scheduleName,
+                        { color: theme.colors.text },
+                      ]}
+                    >
+                      {" "}
+                      {schedule.scheduleName || "⚠️ Missing scheduleName"}{" "}
+                    </Text>
                     <View style={styles.scheduleActions}>
-                      <Pressable onPress={() => handleEditSchedule(schedule)} style={styles.actionButton}>
-                        <Ionicons name="create-outline" size={20} color={theme.colors.text} />
+                      <Pressable
+                        onPress={() => handleEditSchedule(schedule)}
+                        style={styles.actionButton}
+                      >
+                        <Ionicons
+                          name="create-outline"
+                          size={20}
+                          color={theme.colors.text}
+                        />
                       </Pressable>
-                      <Pressable onPress={() => handleDeleteSchedule(schedule)} style={styles.actionButton}>
+                      <Pressable
+                        onPress={() => handleDeleteSchedule(schedule)}
+                        style={styles.actionButton}
+                      >
                         <Ionicons name="trash-outline" size={20} color="red" />
                       </Pressable>
                     </View>
                   </View>
 
-                  <Text style={[styles.scheduleDays, { color: theme.colors.text }]}> {Array.isArray(schedule.selectedDays) ? schedule.selectedDays.join(", ") : "No days selected"} </Text>
+                  <Text
+                    style={[styles.scheduleDays, { color: theme.colors.text }]}
+                  >
+                    {" "}
+                    {Array.isArray(schedule.selectedDays)
+                      ? schedule.selectedDays.join(", ")
+                      : "No days selected"}{" "}
+                  </Text>
 
-                  <View style={[styles.badge, { backgroundColor: isActiveToday ? theme.colors.primary : "#aaa" }]}>
-                    <Text style={{ color: "white", fontWeight: "600", fontSize: 12 }}>
+                  <View
+                    style={[
+                      styles.badge,
+                      {
+                        backgroundColor: isActiveToday
+                          ? theme.colors.primary
+                          : "#aaa",
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={{
+                        color: "white",
+                        fontWeight: "600",
+                        fontSize: 12,
+                      }}
+                    >
                       {isActiveToday ? "Active Today" : "Not Active"}
                     </Text>
                   </View>
@@ -159,7 +235,6 @@ export default function SettingsScreen() {
           <AppButton
             title="Create New Schedule"
             onPress={handleCreateNewSchedule}
-            
             style={{
               marginTop: 16,
               opacity: !isPro && schedules.length > 0 ? 0.6 : 1,
@@ -168,10 +243,14 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Appearance</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Appearance
+          </Text>
 
           <View style={styles.row}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>Dark Mode</Text>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Dark Mode
+            </Text>
             <Switch
               value={isDarkMode}
               onValueChange={setIsDarkMode}
@@ -180,7 +259,9 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.row}>
-            <Text style={[styles.label, { color: theme.colors.text }]}>24-Hour Time</Text>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              24-Hour Time
+            </Text>
             <Switch
               value={is24HourTime}
               onValueChange={setIs24HourTime}
@@ -188,29 +269,21 @@ export default function SettingsScreen() {
             />
           </View>
         </View>
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Developer Tools</Text>
+        {!isPro && (
           <AppButton
-            title={`Toggle Pro Mode (Currently ${isPro ? "On" : "Off"})`}
-            onPress={() => {
-              setIsPro(!isPro);
-              Alert.alert("Dev Mode", `Pro mode is now ${!isPro ? "ENABLED" : "DISABLED"}.`);
-            }}
-            style={{ marginTop: 12 }}
+            title="Upgrade to Pro"
+            onPress={() => setShowUpgradeModal(true)}
+            style={{ marginTop: 24 }}
           />
-          <AppButton
-            title="Reset All Schedules (Dev)"
-            onPress={handleResetAll}
-            style={{ marginTop: 12, backgroundColor: "#aa0000" }}
-          />
-        </View>
+        )}
       </ScrollView>
 
       <UpgradeModal
         isVisible={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        onUpgrade={handleFakeUpgrade}
+        onUpgrade={() => {
+          Alert.alert("Pro Upgrade", "Feature coming soon!");
+        }}
       />
     </SafeAreaView>
   );
@@ -291,12 +364,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.8,
     marginBottom: 8,
-  },
-  lockedText: {
-    fontSize: 14,
-    fontStyle: "italic",
-    textAlign: "center",
-    marginTop: 8,
   },
   badge: {
     alignSelf: "flex-start",

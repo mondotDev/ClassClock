@@ -1,12 +1,8 @@
 // hooks/useProStatus.js
 import { useEffect, useState } from 'react';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
-import { initializeApp } from 'firebase/app';
-import { firebaseConfig } from '../services/firebaseConfig';
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { db } from '../services/firebaseClient';
 
 export default function useProStatus() {
   const { user } = useAuth();
@@ -24,9 +20,15 @@ export default function useProStatus() {
       try {
         const docRef = doc(db, 'users', user.id);
         const docSnap = await getDoc(docRef);
-        setIsPro(docSnap.exists() && docSnap.data().isPro === true);
+
+        if (docSnap.exists()) {
+          setIsPro(docSnap.data().isPro === true);
+        } else {
+          setIsPro(false); // User doc doesn't exist
+        }
       } catch (error) {
-        console.error('🔥 Error checking Pro status:', error);
+        console.warn('⚠️ Could not check Pro status:', error.message);
+        setIsPro(false); // Graceful fallback on permission error
       } finally {
         setLoading(false);
       }

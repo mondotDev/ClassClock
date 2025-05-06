@@ -6,8 +6,14 @@ import ModalCard from './ModalCard';
 import AppButton from './AppButton';
 import useTheme from '../hooks/useTheme';
 
-export default function UpgradeModal({ isVisible, onClose, onUpgrade }) {
+export default function UpgradeModal({ isVisible, onClose }) {
   const theme = useTheme();
+
+  const handleUpgrade = () => {
+    // Placeholder: integrate your payment system here
+    console.log("Upgrade to Pro tapped");
+    onClose();
+  };
 
   return (
     <ModalCard isVisible={isVisible} onClose={onClose}>
@@ -20,8 +26,17 @@ export default function UpgradeModal({ isVisible, onClose, onUpgrade }) {
         Unlock unlimited schedules, future syncing features, and help support continued development.
       </Text>
 
-      <AppButton title="Upgrade to Pro" onPress={onUpgrade} style={styles.button} />
-      <AppButton title="Maybe Later" onPress={onClose} style={[styles.button, { backgroundColor: '#aaa' }]} />
+      <AppButton
+        title="Upgrade to Pro"
+        onPress={handleUpgrade}
+        style={styles.button}
+      />
+
+      <AppButton
+        title="Maybe Later"
+        onPress={onClose}
+        style={[styles.button, { backgroundColor: '#aaa' }]}
+      />
     </ModalCard>
   );
 }
