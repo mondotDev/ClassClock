@@ -1,19 +1,19 @@
 // App.js
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
+import { useState, useEffect, useCallback } from 'react';
 
+import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import MainNavigator from './navigation/MainNavigator';
-import AppLoader from './components/AppLoader';
 import ToastContainer from './components/ToastContainer';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
-  const [showLoader, setShowLoader] = useState(true);
 
   useEffect(() => {
     async function prepare() {
@@ -38,24 +38,16 @@ export default function App() {
     }
   }, [appIsReady]);
 
-  if (!appIsReady) {
-    return null;
-  }
+  if (!appIsReady) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <AppProvider>
-        <>
-          {showLoader ? (
-            <AppLoader onFinish={() => setShowLoader(false)} />
-          ) : (
-            <>
-              <MainNavigator />
-              <ToastContainer />
-            </>
-          )}
-        </>
-      </AppProvider>
+      <AuthProvider>
+        <AppProvider>
+          <MainNavigator />
+          <ToastContainer />
+        </AppProvider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }
